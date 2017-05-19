@@ -19,7 +19,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
-	DOREPLIFETIME(ABaseCharacter, test);
+	DOREPLIFETIME(ABaseCharacter, invincible);
 }
 
 // Called when the game starts or when spawned
@@ -47,5 +47,12 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 void ABaseCharacter::onTimerEnd()
 {
+}
+
+// Handles block events called at every tick
+
+void ABaseCharacter::blockHandler2()
+{
+
 }
 

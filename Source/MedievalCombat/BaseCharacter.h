@@ -26,13 +26,19 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 public:
-	/** How to create a variable, This creates a boolean */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated /*(if you want to replicate to server)*/, Category = Default)
-		bool test = false;
+	/* **************************** All Variables, comments preceed each category **************************** */
+
+	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Default)
+		bool invincible = false;
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();
+
+	/** Handles block events called at every tick */
+	UFUNCTION()
+		void blockHandler2();
 
 private:
 	FTimerHandle delayTimerHandle;
