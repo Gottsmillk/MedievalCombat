@@ -34,6 +34,10 @@ public:
 	UFUNCTION()
 		void onTimerEnd();
 
+	//Decrements cooldown by .1 every time called, if cd > 0
+	UFUNCTION()
+		void cooldownDecrement2(float& cd, UPARAM(ref) FTimerHandle& Handle);
+
 private:
 	FTimerHandle delayTimerHandle;
 };
