@@ -35,8 +35,8 @@ public:
 		void onTimerEnd();
 
 	//Decrements cooldown by .1 every time called, if cd > 0
-	UFUNCTION()
-		void cooldownDecrement2(float& cd, UPARAM(ref) FTimerHandle& Handle);
+	UFUNCTION(BlueprintCallable)
+		void cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 private:
 	FTimerHandle delayTimerHandle;

@@ -50,7 +50,7 @@ void ABaseCharacter::onTimerEnd()
 }
 
 //Decrements cooldown by .1 every time called, if cd > 0
-void ABaseCharacter::cooldownDecrement2(float& cd, UPARAM(ref) FTimerHandle& Handle)
+void ABaseCharacter::cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
 {
 	if (cd > 0)
 	{
