@@ -20,6 +20,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 
 	// Replicate to everyone
 	DOREPLIFETIME(ABaseCharacter, invincible);
+	DOREPLIFETIME(ABaseCharacter, isDead);
 }
 
 // Called when the game starts or when spawned

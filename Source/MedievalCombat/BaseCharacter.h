@@ -26,19 +26,39 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 public:
-	/* **************************** All Variables, comments preceed each category **************************** */
+	/* **************************** Variables **************************** */
 
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Default)
 		bool invincible = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Default)
+		bool isDead = false;
+	/* ***** Health Variables ***** */
+
+	/* ***** Attack Handler Variables ***** */
+
+	/* ***** Block Handler Variables ***** */
+
+	/* ***** Flinch Variables ***** */
+
+	/* ***** Roll Variables ***** */
+
+	/* ***** Movement Variables ***** */
+
+	/* ***** Resilience Variables ***** */
+
+	/* **************************** Functions **************************** */
+
+	/** Handles block events called at every tick */
+	UFUNCTION(BlueprintCallable)
+		void blockHandler2();
+
+	/* **************************** Other **************************** */
+
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();
-
-	/** Handles block events called at every tick */
-	UFUNCTION()
-		void blockHandler2();
 
 private:
 	FTimerHandle delayTimerHandle;
