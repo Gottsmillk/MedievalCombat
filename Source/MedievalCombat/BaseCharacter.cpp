@@ -19,8 +19,24 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
-	DOREPLIFETIME(ABaseCharacter, invincible);
-	DOREPLIFETIME(ABaseCharacter, isDead);
+	DOREPLIFETIME(ABaseCharacter, IsDead);
+	DOREPLIFETIME(ABaseCharacter, Health);
+	DOREPLIFETIME(ABaseCharacter, CanAttack);
+	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
+	DOREPLIFETIME(ABaseCharacter, IsBlocking);
+	DOREPLIFETIME(ABaseCharacter, AttackWasBlocked);
+	DOREPLIFETIME(ABaseCharacter, SuccessfullyDefended);
+	DOREPLIFETIME(ABaseCharacter, RecoilAnim);
+	DOREPLIFETIME(ABaseCharacter, BlockingAnimation);
+	DOREPLIFETIME(ABaseCharacter, HoldingBlock);
+	DOREPLIFETIME(ABaseCharacter, FlinchDuration);
+	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
+	DOREPLIFETIME(ABaseCharacter, Flinched);
+	DOREPLIFETIME(ABaseCharacter, RollAnim);
+	DOREPLIFETIME(ABaseCharacter, RollSpeed);
+	DOREPLIFETIME(ABaseCharacter, Resilience);
+	DOREPLIFETIME(ABaseCharacter, ResilienceRegen);
+	DOREPLIFETIME(ABaseCharacter, ResilienceDrain);
 }
 
 // Called when the game starts or when spawned

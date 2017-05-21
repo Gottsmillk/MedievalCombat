@@ -29,24 +29,99 @@ public:
 	/* **************************** Variables **************************** */
 
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Default)
-		bool invincible = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Default)
-		bool isDead = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		bool Invincible = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
+		bool IsDead = false;
+
 	/* ***** Health Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
+		float Health = 100.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
+		float MaxHealth = 100.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
+		float KnockbackValue = 0;
 
 	/* ***** Attack Handler Variables ***** */
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		bool CanDamage = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool CanAttack = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool CurrentAttackHit = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		float CurrentDamage = 0;
+
 	/* ***** Block Handler Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool IsBlocking = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool AttackWasBlocked = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool SuccessfullyDefended = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool RecoilAnim = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool BlockingAnimation = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool HoldingBlock = false;
 
 	/* ***** Flinch Variables ***** */
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
+		float FlinchDuration = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
+		bool FlinchTrigger = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
+		bool Flinched = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Flinch)
+		bool CantFlinch = false;
+
 	/* ***** Roll Variables ***** */
 
-	/* ***** Movement Variables ***** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
+		bool RollAnim = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+		bool IsRolling = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
+		float RollSpeed = 1.0;
 
 	/* ***** Resilience Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		float Resilience = 100.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
+		float ResilienceReplenishAmt = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
+		float MaxResilience = 100.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		bool ResilienceRegen = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		bool ResilienceDrain = false;
 
 	/* **************************** Functions **************************** */
 
