@@ -129,15 +129,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void blockHandler2();
 
+	//Decrements cooldown by .1 every time called, if cd > 0
+	UFUNCTION(BlueprintCallable)
+		void cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
+
 	/* **************************** Other **************************** */
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();
-
-	//Decrements cooldown by .1 every time called, if cd > 0
-	UFUNCTION(BlueprintCallable)
-		void cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 private:
 	FTimerHandle delayTimerHandle;
