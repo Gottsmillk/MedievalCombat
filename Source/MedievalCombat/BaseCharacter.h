@@ -117,21 +117,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
 		float MaxResilience = 100.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		bool ResilienceRegen = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		bool ResilienceDrain = false;
-
 	/* **************************** Functions **************************** */
-
-	/** Handles block events called at every tick */
-	UFUNCTION(BlueprintCallable)
-		void blockHandler2();
 
 	//Decrements cooldown by .1 every time called, if cd > 0
 	UFUNCTION(BlueprintCallable)
-		void cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
+		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/* **************************** Other **************************** */
 

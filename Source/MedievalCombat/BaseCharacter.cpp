@@ -35,8 +35,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, RollAnim);
 	DOREPLIFETIME(ABaseCharacter, RollSpeed);
 	DOREPLIFETIME(ABaseCharacter, Resilience);
-	DOREPLIFETIME(ABaseCharacter, ResilienceRegen);
-	DOREPLIFETIME(ABaseCharacter, ResilienceDrain);
 }
 
 // Called when the game starts or when spawned
@@ -67,7 +65,7 @@ void ABaseCharacter::onTimerEnd()
 }
 
 //Decrements cooldown by .1 every time called, if cd > 0
-void ABaseCharacter::cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
+void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
 {
 	if (cd > 0)
 	{
@@ -80,9 +78,3 @@ void ABaseCharacter::cooldownDecrement2(UPARAM(ref) float cd, UPARAM(ref) FTimer
 	GetWorld()->GetTimerManager().ClearTimer(Handle);
 }
 // Handles block events called at every tick
-
-void ABaseCharacter::blockHandler2()
-{
-
-}
-
