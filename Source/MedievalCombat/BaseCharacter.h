@@ -110,12 +110,31 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float Resilience = 100.0;
+	/* ***** Movement Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+		bool CanTurn = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+		bool CanMove = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		float CurrentFBLoc = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		float CurrentLRLoc = 0;
+
 
 	/* **************************** Functions **************************** */
 
 	//Decrements cooldown by .1 every time called, if cd > 0
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
+
+	//Attempt at Roll Direction Handler
+	UFUNCTION(BlueprintCallable)
+		void RollDirectionHandler();
+
 
 	/* **************************** Other **************************** */
 
