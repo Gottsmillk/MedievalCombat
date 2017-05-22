@@ -91,7 +91,7 @@ void ABaseCharacter::RollDirectionHandler()
 		{
 			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
 		}
-		else if (CurrentFBLoc == 0 && CurrentLRLoc = 0)
+		else if (CurrentFBLoc == 0 && CurrentLRLoc == 0)
 		{
 			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
 		}
