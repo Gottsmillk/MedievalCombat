@@ -111,12 +111,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float Resilience = 100.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
-		float ResilienceReplenishAmt = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
-		float MaxResilience = 100.0;
-
 	/* **************************** Functions **************************** */
 
 	//Decrements cooldown by .1 every time called, if cd > 0
