@@ -83,15 +83,18 @@ void ABaseCharacter::RollDirectionHandler()
 {
 	if (IsRolling)
 	{
-		if (IsHeadMountedDisplayEnabled)
+		// Left or Right input
+		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed)); 
+
+		// Forward or Back input
+		if (CurrentFBLoc > 0 || CurrentFBLoc < 0)
 		{
-			AddMovementInput(GetRightVector(), CurrentLRLoc);
+			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
 		}
-		else
+		else if (CurrentFBLoc == 0 && CurrentLRLoc = 0)
 		{
-			AddMovementInput(GetActorRightVector(), CurrentLRLoc);
+			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
 		}
-		//continue code here
 
 	}
 }

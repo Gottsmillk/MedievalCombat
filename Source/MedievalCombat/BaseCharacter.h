@@ -110,6 +110,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float Resilience = 100.0;
+
 	/* ***** Movement Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
