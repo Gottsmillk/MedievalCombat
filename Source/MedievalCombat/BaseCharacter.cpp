@@ -74,20 +74,20 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 	else
 	{
 		cd = 0;
+		GetWorld()->GetTimerManager().ClearTimer(Handle);
 	}
-	GetWorld()->GetTimerManager().ClearTimer(Handle);
 }
 // Handles block events called at every tick
 //Attempt at Roll Direction Handler
-void ABaseCharacter::RollDirectionHandler()
+void ABaseCharacter::RollDirectionHandler1()
 {
 	if (IsRolling)
 	{
 		// Left or Right input
-		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed)); 
+		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
 
 		// Forward or Back input
-		if (CurrentFBLoc > 0 || CurrentFBLoc < 0)
+		if (CurrentFBLoc != 0)
 		{
 			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
 		}

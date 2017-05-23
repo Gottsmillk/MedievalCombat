@@ -134,7 +134,7 @@ public:
 
 	//Attempt at Roll Direction Handler
 	UFUNCTION(BlueprintCallable)
-		void RollDirectionHandler();
+		void RollDirectionHandler1();
 
 
 	/* **************************** Other **************************** */
