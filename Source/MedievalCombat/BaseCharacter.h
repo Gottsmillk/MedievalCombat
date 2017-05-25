@@ -111,13 +111,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float Resilience = 100.0;
 
+	/* ***** Other Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class HPOverhead* HPOverhead;
+
 	/* **************************** Functions **************************** */
 
 	//Decrements cooldown by .1 every time called, if cd > 0
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
-	/* **************************** Other **************************** */
+	/* **************************** Other Functions **************************** */
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
