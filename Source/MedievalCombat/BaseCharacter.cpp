@@ -81,7 +81,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 //Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler1()
 {
-	if (IsRolling)
+	if (true)
 	{
 		// Left or Right input
 		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
