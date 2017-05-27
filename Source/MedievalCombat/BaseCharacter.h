@@ -116,11 +116,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class HPOverhead* HPOverhead;
 
+	class UWidgetComponent* MyWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "InGameUI")
+		class TSubclassOf<UUserWidget> hudWidgetClass;
+
+	UPROPERTY()
+		class UUserWidget* hudWidgetObj;
+
 	/* **************************** Functions **************************** */
 
 	//Decrements cooldown by .1 every time called, if cd > 0
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
+
+	UFUNCTION(BlueprintCallable)
+		void RollDirectionHandler1();
 
 	/* **************************** Other Functions **************************** */
 
