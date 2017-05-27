@@ -5,10 +5,18 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
-UCLASS()
+UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
+
+	/** Camera boom positioning the camera behind the character */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class USpringArmComponent* CameraBoom;
+
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class UCameraComponent* FollowCamera;
 
 public:
 	// Sets default values for this character's properties
@@ -27,6 +35,13 @@ public:
 
 public:
 	/* **************************** Variables **************************** */
+
+	/* ***** Component Variables ***** */
+
+	/** Returns CameraBoom subobject **/
+	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	/** Returns FollowCamera subobject **/
+	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 
@@ -106,6 +121,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
 		float RollSpeed = 1.0;
 
+	/* ***** Movement Variables ***** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+		bool CanMove = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+		bool CanTurn = true;
+
 	/* ***** Resilience Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
@@ -113,25 +136,11 @@ public:
 
 	/* ***** Other Variables ***** */
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class HPOverhead* HPOverhead;
-
-	class UWidgetComponent* MyWidget;
-
-	UPROPERTY(EditDefaultsOnly, Category = "InGameUI")
-		class TSubclassOf<UUserWidget> hudWidgetClass;
-
-	UPROPERTY()
-		class UUserWidget* hudWidgetObj;
-
 	/* **************************** Functions **************************** */
 
 	//Decrements cooldown by .1 every time called, if cd > 0
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
-
-	UFUNCTION(BlueprintCallable)
-		void RollDirectionHandler1();
 
 	/* **************************** Other Functions **************************** */
 
