@@ -102,9 +102,9 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 }
 // Handles block events called at every tick
 //Attempt at Roll Direction Handler
-void ABaseCharacter::RollDirectionHandler1()
+void ABaseCharacter::RollDirectionHandler()
 {
-	if (true)
+	if (IsRolling == true)
 	{
 		// Left or Right input
 		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));

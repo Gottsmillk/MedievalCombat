@@ -152,11 +152,10 @@ public:
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/* **************************** Other Functions **************************** */
+
 	//Attempt at Roll Direction Handler
 	UFUNCTION(BlueprintCallable)
-		void RollDirectionHandler1();
-
-
+		void RollDirectionHandler();
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
