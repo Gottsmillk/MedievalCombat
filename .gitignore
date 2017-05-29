@@ -114,3 +114,4 @@ $RECYCLE.BIN/
 *.lnk
 bfg-1.12.15.jar
 *.ipch
+*.orig

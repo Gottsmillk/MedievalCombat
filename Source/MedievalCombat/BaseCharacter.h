@@ -132,6 +132,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
 		bool CanTurn = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		float CurrentFBLoc = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		float CurrentLRLoc = 0;
+
 	/* ***** Resilience Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
@@ -146,6 +152,11 @@ public:
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/* **************************** Other Functions **************************** */
+	//Attempt at Roll Direction Handler
+	UFUNCTION(BlueprintCallable)
+		void RollDirectionHandler1();
+
+
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
