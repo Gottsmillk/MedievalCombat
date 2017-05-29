@@ -157,6 +157,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
 
+	//Attempt at Roll Handler, for when character rolls
+	UFUNCTION(BlueprintCallable)
+		void RollHandler();
+
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();

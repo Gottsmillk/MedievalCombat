@@ -101,6 +101,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 	}
 }
 // Handles block events called at every tick
+
 //Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
@@ -119,5 +120,45 @@ void ABaseCharacter::RollDirectionHandler()
 			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
 		}
 
+	}
+}
+
+//idk what I'm doing but here's an attempt at Roll Handler
+void ABaseCharacter::RollHandler()
+{
+	if (CharacterMovement->IsMovingOnGround() && !IsRolling)
+	{
+		if (Flinched)
+		{
+			Flinched = false;
+			FlinchTrigger = false;
+		}
+		//Roll Cancels Anim Event, very unsure about these lines
+		MeshFP->GetAnimInstance()->Montage_Stop(0.0);
+		MeshMP->GetAnimInstance()->Montage_Stop(0.0);
+
+		if (IsBlocking)
+		{
+			IsBlocking = false;
+		}
+
+		Resilience = FClamp((Resilience - 25), 0.0, 100.0);
+		CanMove = false;
+		RollAnim = true;
+		Invincible = true;
+		CanDamage = false;
+		IsRolling = true;
+		RetriggerableDelay(this, .9); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
+		IsRolling = false;
+		CanMove = true;
+		RetriggerableDelay(this, .25); //SAME SHIT
+		CurrentFBLoc = 0;
+		CurrentLRLoc = 0;
+		Invincible = false;
+
+		if (BlockingAnimation)
+		{
+			IsBlocking = true;
+		}
 	}
 }
