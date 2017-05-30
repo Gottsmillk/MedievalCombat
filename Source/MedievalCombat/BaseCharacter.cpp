@@ -3,6 +3,8 @@
 #include "MedievalCombat.h"
 #include "BaseCharacter.h"
 #include "UnrealNetwork.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 
 // Sets default values
@@ -123,35 +125,37 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
+void ABaseCharacter::RollCancelsAnimEvent()
+{
+	GetMesh()->GetAnimInstance()->Montage_Stop(0.0);
+}
+
 //idk what I'm doing but here's an attempt at Roll Handler
 void ABaseCharacter::RollHandler()
 {
-	if (CharacterMovement->IsMovingOnGround() && !IsRolling)
+	if (GetCharacterMovement()->IsMovingOnGround() && !IsRolling)
 	{
 		if (Flinched)
 		{
 			Flinched = false;
 			FlinchTrigger = false;
 		}
-		//Roll Cancels Anim Event, very unsure about these lines
-		MeshFP->GetAnimInstance()->Montage_Stop(0.0);
-		MeshMP->GetAnimInstance()->Montage_Stop(0.0);
-
+		RollCancelsAnimEvent();
 		if (IsBlocking)
 		{
 			IsBlocking = false;
 		}
 
-		Resilience = FClamp((Resilience - 25), 0.0, 100.0);
+		Resilience = FClamp((Resilience - 25), 0.0f, 100.0f);
 		CanMove = false;
 		RollAnim = true;
 		Invincible = true;
 		CanDamage = false;
 		IsRolling = true;
-		RetriggerableDelay(this, .9); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
+		RetriggerableDelay(this, .9, null); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
 		IsRolling = false;
 		CanMove = true;
-		RetriggerableDelay(this, .25); //SAME SHIT
+		RetriggerableDelay(this, .25, null); //SAME SHIT
 		CurrentFBLoc = 0;
 		CurrentLRLoc = 0;
 		Invincible = false;
@@ -161,4 +165,10 @@ void ABaseCharacter::RollHandler()
 			IsBlocking = true;
 		}
 	}
+}
+
+//Server's roll handler
+void ABaseCharacter::RollHandlerServer()
+{
+	RollHandler();
 }

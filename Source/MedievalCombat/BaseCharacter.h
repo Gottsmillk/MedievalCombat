@@ -3,7 +3,10 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "BaseCharacter.generated.h"
+
 
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
@@ -147,19 +150,27 @@ public:
 
 	/* **************************** Functions **************************** */
 
-	//Decrements cooldown by .1 every time called, if cd > 0
+	/* Decrements cooldown by .1 every time called, if cd > 0 */
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/* **************************** Other Functions **************************** */
 
-	//Attempt at Roll Direction Handler
+	/* Attempt at Roll Direction Handler */
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
 
-	//Attempt at Roll Handler, for when character rolls
+	/* Attempt at Roll Handler, for when character rolls */
 	UFUNCTION(BlueprintCallable)
 		void RollHandler();
+
+	/* Cancelling roll animations */
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void RollCancelsAnimEvent();
+
+	/* Serversided roll handler */
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation)
+		void RollHandlerServer();
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
