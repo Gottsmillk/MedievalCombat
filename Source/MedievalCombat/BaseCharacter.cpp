@@ -9,6 +9,7 @@
 ABaseCharacter::ABaseCharacter()
 {
 	// Set size for collision capsule
+	GetCapsuleComponent()->SetVisibility(false);
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 70.0f);
 
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -29,11 +30,82 @@ ABaseCharacter::ABaseCharacter()
 
 	// Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
-	PlayerCollision->InitCapsuleSize(60.0f, 120.0f);
+	PlayerCollision->SetVisibility(false);
+	PlayerCollision->InitCapsuleSize(70.0f, 120.0f);
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	PlayerCollision->bDynamicObstacle = true;
+	PlayerCollision->bGenerateOverlapEvents = false;
+	PlayerCollision->AttachTo(RootComponent);
 	//PlayerCollision->OnComponentBeginOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapBegin);
 	//PlayerCollision->OnComponentEndOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapEnd);
-	PlayerCollision->AttachTo(RootComponent);
+
+	// Create weapon
+	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
+	Weapon->SetupAttachment(RootComponent);
+	Weapon->SetVisibility(false);
+	Weapon->SetHiddenInGame(true);
+	Weapon->bGenerateOverlapEvents = false;
+
+	/***** Create weapon hurtboxes *****/
+	// Weapon Hurtbox Base
+	WeaponHurtboxBase = CreateDefaultSubobject<UBoxComponent>(TEXT("WeaponHurtboxBase"));
+	WeaponHurtboxBase->SetVisibility(false);
+	WeaponHurtboxBase->SetHiddenInGame(true);
+	WeaponHurtboxBase->SetBoxExtent(FVector(0.6f, 0.22f, 32.0f));
+	WeaponHurtboxBase->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	WeaponHurtboxBase->bDynamicObstacle = false;
+	WeaponHurtboxBase->bGenerateOverlapEvents = true;
+	WeaponHurtboxBase->AttachTo(Weapon);
+
+	// Hurtbox1
+	Hurtbox1 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox1"));
+	Hurtbox1->SetVisibility(false);
+	Hurtbox1->SetHiddenInGame(true);
+	Hurtbox1->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
+	Hurtbox1->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hurtbox1->bDynamicObstacle = false;
+	Hurtbox1->bGenerateOverlapEvents = false;
+	Hurtbox1->AttachTo(WeaponHurtboxBase);
+
+	// Hurtbox2
+	Hurtbox2 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox2"));
+	Hurtbox2->SetVisibility(false);
+	Hurtbox2->SetHiddenInGame(true);
+	Hurtbox2->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
+	Hurtbox2->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hurtbox2->bDynamicObstacle = false;
+	Hurtbox2->bGenerateOverlapEvents = false;
+	Hurtbox2->AttachTo(WeaponHurtboxBase);
+
+	// Hurtbox3
+	Hurtbox3 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox3"));
+	Hurtbox3->SetVisibility(false);
+	Hurtbox3->SetHiddenInGame(true);
+	Hurtbox3->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
+	Hurtbox3->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hurtbox3->bDynamicObstacle = false;
+	Hurtbox3->bGenerateOverlapEvents = false;
+	Hurtbox3->AttachTo(WeaponHurtboxBase);
+
+	// Hurtbox4
+	Hurtbox4 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox4"));
+	Hurtbox4->SetVisibility(false);
+	Hurtbox4->SetHiddenInGame(true);
+	Hurtbox4->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
+	Hurtbox4->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hurtbox4->bDynamicObstacle = false;
+	Hurtbox4->bGenerateOverlapEvents = false;
+	Hurtbox4->AttachTo(WeaponHurtboxBase);
+
+	// Hurtbox5
+	Hurtbox5 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox5"));
+	Hurtbox5->SetVisibility(false);
+	Hurtbox5->SetHiddenInGame(true);
+	Hurtbox5->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
+	Hurtbox5->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Hurtbox5->bDynamicObstacle = false;
+	Hurtbox5->bGenerateOverlapEvents = false;
+	Hurtbox5->AttachTo(WeaponHurtboxBase);
 }
 
 // Allows Replication of variables for Client/Server Networking
