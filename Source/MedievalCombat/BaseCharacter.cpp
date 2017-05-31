@@ -3,7 +3,9 @@
 #include "MedievalCombat.h"
 #include "BaseCharacter.h"
 #include "UnrealNetwork.h"
+#include "DrawDebugHelpers.h"
 
+#define COLLISION_ATTACK ECC_GameTraceChannel4
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -35,7 +37,7 @@ ABaseCharacter::ABaseCharacter()
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PlayerCollision->bDynamicObstacle = true;
 	PlayerCollision->bGenerateOverlapEvents = false;
-	PlayerCollision->AttachTo(RootComponent);
+	PlayerCollision->SetupAttachment(RootComponent);
 	//PlayerCollision->OnComponentBeginOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapBegin);
 	//PlayerCollision->OnComponentEndOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapEnd);
 
@@ -55,7 +57,7 @@ ABaseCharacter::ABaseCharacter()
 	WeaponHurtboxBase->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	WeaponHurtboxBase->bDynamicObstacle = false;
 	WeaponHurtboxBase->bGenerateOverlapEvents = true;
-	WeaponHurtboxBase->AttachTo(Weapon);
+	WeaponHurtboxBase->SetupAttachment(Weapon);
 
 	// Hurtbox1
 	Hurtbox1 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox1"));
@@ -65,7 +67,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox1->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox1->bDynamicObstacle = false;
 	Hurtbox1->bGenerateOverlapEvents = false;
-	Hurtbox1->AttachTo(WeaponHurtboxBase);
+	Hurtbox1->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox2
 	Hurtbox2 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox2"));
@@ -75,7 +77,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox2->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox2->bDynamicObstacle = false;
 	Hurtbox2->bGenerateOverlapEvents = false;
-	Hurtbox2->AttachTo(WeaponHurtboxBase);
+	Hurtbox2->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox3
 	Hurtbox3 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox3"));
@@ -85,7 +87,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox3->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox3->bDynamicObstacle = false;
 	Hurtbox3->bGenerateOverlapEvents = false;
-	Hurtbox3->AttachTo(WeaponHurtboxBase);
+	Hurtbox3->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox4
 	Hurtbox4 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox4"));
@@ -95,7 +97,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox4->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox4->bDynamicObstacle = false;
 	Hurtbox4->bGenerateOverlapEvents = false;
-	Hurtbox4->AttachTo(WeaponHurtboxBase);
+	Hurtbox4->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox5
 	Hurtbox5 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox5"));
@@ -105,7 +107,15 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox5->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox5->bDynamicObstacle = false;
 	Hurtbox5->bGenerateOverlapEvents = false;
-	Hurtbox5->AttachTo(WeaponHurtboxBase);
+	Hurtbox5->SetupAttachment(WeaponHurtboxBase);
+
+	// Store the hurtboxes inside the hitbox component array
+	HitboxComponentArray[0] = WeaponHurtboxBase;
+	HitboxComponentArray[1] = Hurtbox1;
+	HitboxComponentArray[2] = Hurtbox2;
+	HitboxComponentArray[3] = Hurtbox3;
+	HitboxComponentArray[4] = Hurtbox4;
+	HitboxComponentArray[5] = Hurtbox5;
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -143,7 +153,7 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	HitboxHandler();
 }
 
 // Called to bind functionality to input
@@ -153,10 +163,43 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 }
 
-// Function for handling DELAY equivalent from Blueprints
-
+//Function for handling DELAY equivalent from Blueprints
 void ABaseCharacter::onTimerEnd()
 {
+}
+
+void ABaseCharacter::HitboxHandler() {
+	if (this->HasAuthority()) {
+		if (CanDamage == true) {
+			if (InitialHitbox == true) {
+				InitialHitbox = false;
+				FillHitboxArray();
+			}
+			// Trace lines for each vector stored in the vector array
+			for (int i = 0; i < 6; i++) {
+				FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
+				RV_TraceParams.bTraceComplex = true;
+				RV_TraceParams.bTraceAsyncScene = true;
+				RV_TraceParams.bReturnPhysicalMaterial = false;
+				RV_TraceParams.bIgnoreBlocks = false;
+
+				//Re-initialize hit info
+				FHitResult Out_Hit(ForceInit);
+
+				//call GetWorld() from within an actor extending class
+				 if (GetWorld()->LineTraceSingleByChannel(Out_Hit, HitboxComponentArray[i]->GetSocketLocation(""), HitboxArray[i], COLLISION_ATTACK, RV_TraceParams) == true) {
+					WeaponHitEvent(Out_Hit);
+					break;
+				}
+			}
+			FillHitboxArray();
+		}
+		else {
+			if (InitialHitbox == false) {
+				InitialHitbox = true;
+			}
+		}
+	}
 }
 
 //Decrements cooldown by .1 every time called, if cd > 0
@@ -172,7 +215,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
 	}
 }
-// Handles block events called at every tick
+
 //Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
@@ -192,4 +235,19 @@ void ABaseCharacter::RollDirectionHandler()
 		}
 
 	}
+}
+
+void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
+
+}
+
+/* Please only put helper functions here (functions called by a main function) */
+void ABaseCharacter::FillHitboxArray() {
+	// Store the hurtboxes inside the hitbox component array
+	HitboxArray[0] = WeaponHurtboxBase->GetSocketLocation("");
+	HitboxArray[1] = Hurtbox1->GetSocketLocation("");
+	HitboxArray[2] = Hurtbox2->GetSocketLocation("");
+	HitboxArray[3] = Hurtbox3->GetSocketLocation("");
+	HitboxArray[4] = Hurtbox4->GetSocketLocation("");
+	HitboxArray[5] = Hurtbox5->GetSocketLocation("");
 }

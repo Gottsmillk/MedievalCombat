@@ -78,6 +78,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
 		bool IsDead = false;
 
+	/* ***** Hitbox Variables ***** */
+
+	UPROPERTY(EditAnywhere, Category = Hitbox)
+		UShapeComponent* HitboxComponentArray[6];
+
+	UPROPERTY(EditAnywhere, Category = Hitbox)
+		FVector HitboxArray[6];
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
+		bool InitialHitbox = true;
+
 	/* ***** Health Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
@@ -171,19 +182,29 @@ public:
 
 	/* **************************** Functions **************************** */
 
-	//Decrements cooldown by .1 every time called, if cd > 0
+	/**Decrements cooldown by .1 every time called, if cd > 0 */
 	UFUNCTION(BlueprintCallable)
 		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
-	/* **************************** Other Functions **************************** */
+	/** Hitbox Handler */
+	UFUNCTION(BlueprintCallable)
+		void HitboxHandler();
 
-	//Attempt at Roll Direction Handler
+	/** Roll Direction Handler */
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
+
+	/** Function for when an attack hits (SwordContactEvent) */
+	UFUNCTION()
+		void WeaponHitEvent(FHitResult HitResult);
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();
+
+	/** Helper function for Hitbox Handler */
+	UFUNCTION()
+		void FillHitboxArray();
 
 private:
 	FTimerHandle delayTimerHandle;
