@@ -175,13 +175,19 @@ void ABaseCharacter::HitboxHandler() {
 				InitialHitbox = false;
 				FillHitboxArray();
 			}
+			const FName TraceTag("MyTraceTag"); // Trace for debug
+
+			GetWorld()->DebugDrawTraceTag = TraceTag; // Trace for debug
+
+			FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
+			RV_TraceParams.TraceTag = TraceTag; // Trace for debug
+			RV_TraceParams.bTraceComplex = true;
+			RV_TraceParams.bTraceAsyncScene = true;
+			RV_TraceParams.bReturnPhysicalMaterial = false;
+			RV_TraceParams.bIgnoreBlocks = false;
+
 			// Trace lines for each vector stored in the vector array
 			for (int i = 0; i < 6; i++) {
-				FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
-				RV_TraceParams.bTraceComplex = true;
-				RV_TraceParams.bTraceAsyncScene = true;
-				RV_TraceParams.bReturnPhysicalMaterial = false;
-				RV_TraceParams.bIgnoreBlocks = false;
 
 				//Re-initialize hit info
 				FHitResult Out_Hit(ForceInit);
@@ -238,7 +244,10 @@ void ABaseCharacter::RollDirectionHandler()
 }
 
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
-
+	if (HitResult.GetActor() != this) {
+		if (GEngine)
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
+	}
 }
 
 /* Please only put helper functions here (functions called by a main function) */
