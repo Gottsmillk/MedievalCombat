@@ -22,6 +22,7 @@ ABaseCharacter::ABaseCharacter()
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
@@ -245,8 +246,22 @@ void ABaseCharacter::RollDirectionHandler()
 
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
+		CurrentAttackHit = true;
+		CanDamage = false;
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
+		if (AttackedTarget->Invincible == false && AttackedTarget->SuccessfullyDefended == false) {
+			AttackedTarget->IsBlocking = false;
+			AttackedTarget->BlockingAnimation = false;
+			AttackedTarget->FlinchTrigger = true;
+			AttackedTarget->Health -= CurrentDamage;
+			AttackedTarget->SuccessfullyDefended = false;
+			if (GEngine)
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("%f"), AttackedTarget->Health));
+			if (AttackedTarget->Health <= 0) {
+				//Insert server death here
+				//AttackedTarget->
+			}
+		}
 	}
 }
 
