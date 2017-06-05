@@ -5,6 +5,18 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
+/* ***** STRUCTS ***** */
+
+USTRUCT(BlueprintType)
+struct FDirResult {
+	GENERATED_USTRUCT_BODY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool CorrectOrientation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		FVector Direction;
+};
+
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
@@ -18,9 +30,17 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 
+	/** Direction camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UCameraComponent* DirectionCamera;
+
 	/** Capsule component for player collision (Player)*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UCapsuleComponent* PlayerCollision;
+	
+	/** Capsule component for player collision (Player)*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UCapsuleComponent* PlayerCollision2;
 
 	/** Weapon Mesh object (BasicSword)*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
@@ -161,10 +181,10 @@ public:
 
 	/* ***** Movement Variables ***** */
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		bool CanMove = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		bool CanTurn = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
@@ -172,6 +192,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		float CurrentLRLoc = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		bool Colliding = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		bool Overlapping = false;
 
 	/* ***** Resilience Variables ***** */
 
@@ -202,6 +228,31 @@ public:
 	UFUNCTION()
 		void onTimerEnd();
 
+	/** PlayerCollision2 begin overlap */
+	UFUNCTION()
+		void PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	/** PlayerCollision2 end overlap */
+	UFUNCTION()
+		void PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	/** Example of multicasting */
+	//Function for playing an animation montage 
+	UFUNCTION()
+		void PlayActionAnim(UAnimMontage* Animation, float Speed);
+
+	/*Function for server playing an animation montage */
+	UFUNCTION(BlueprintCallable, NetMulticast, Unreliable)
+		void PlayActionAnimServer(UAnimMontage* Animation, float Speed); // Ignore green squiggle
+
+	/*Function for finding if two players are within 90 degrees of facing eachother */
+	UFUNCTION(BlueprintCallable)
+		FDirResult GetPlayerDirections(FVector ObjectLocation, AActor * Enemy); 
+
+	/* Function for checking if player should move during attack or stay still */
+	UFUNCTION(BlueprintCallable)
+		void CheckMoveDuringAttack();
+
 	/** Helper function for Hitbox Handler */
 	UFUNCTION()
 		void FillHitboxArray();
@@ -209,4 +260,3 @@ public:
 private:
 	FTimerHandle delayTimerHandle;
 };
-

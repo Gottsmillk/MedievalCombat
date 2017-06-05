@@ -4,8 +4,10 @@
 #include "BaseCharacter.h"
 #include "UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/KismetMathLibrary.h"
 
 #define COLLISION_ATTACK ECC_GameTraceChannel4
+#define COLLISION_DIRECTION ECC_GameTraceChannel5
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -31,6 +33,11 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	// Create a direction camera
+	DirectionCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DirectionCamera"));
+	DirectionCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	DirectionCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
 	// Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
 	PlayerCollision->SetVisibility(false);
@@ -39,8 +46,17 @@ ABaseCharacter::ABaseCharacter()
 	PlayerCollision->bDynamicObstacle = true;
 	PlayerCollision->bGenerateOverlapEvents = false;
 	PlayerCollision->SetupAttachment(RootComponent);
-	//PlayerCollision->OnComponentBeginOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapBegin);
-	//PlayerCollision->OnComponentEndOverlap.AddDynamic(this, &ABSNOneCharacter::OnLedgeGrabOverlapEnd);
+
+	// Create a capsule component to avoid people going through eachother
+	PlayerCollision2 = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision2"));
+	PlayerCollision2->SetVisibility(false);
+	PlayerCollision2->InitCapsuleSize(90.0f, 120.0f);
+	PlayerCollision2->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	PlayerCollision2->bDynamicObstacle = true;
+	PlayerCollision2->bGenerateOverlapEvents = true;
+	PlayerCollision2->SetupAttachment(RootComponent);
+	PlayerCollision2->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::PlayerCollision2Begin);
+	PlayerCollision2->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::PlayerCollision2End);
 
 	// Create weapon
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
@@ -141,6 +157,10 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, RollAnim);
 	DOREPLIFETIME(ABaseCharacter, RollSpeed);
 	DOREPLIFETIME(ABaseCharacter, Resilience);
+	DOREPLIFETIME(ABaseCharacter, CanMove);
+	DOREPLIFETIME(ABaseCharacter, CanTurn);
+	DOREPLIFETIME(ABaseCharacter, Colliding);
+	DOREPLIFETIME(ABaseCharacter, Overlapping);
 }
 
 // Called when the game starts or when spawned
@@ -169,6 +189,7 @@ void ABaseCharacter::onTimerEnd()
 {
 }
 
+//Handling attack hitbox
 void ABaseCharacter::HitboxHandler() {
 	if (this->HasAuthority()) {
 		if (CanDamage == true) {
@@ -244,23 +265,88 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
+//When a hitbox is triggered and a weapon hit
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
 		CurrentAttackHit = true;
 		CanDamage = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
 		if (AttackedTarget->Invincible == false && AttackedTarget->SuccessfullyDefended == false) {
-			AttackedTarget->IsBlocking = false;
-			AttackedTarget->BlockingAnimation = false;
-			AttackedTarget->FlinchTrigger = true;
-			AttackedTarget->Health -= CurrentDamage;
-			AttackedTarget->SuccessfullyDefended = false;
-			if (GEngine)
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("%f"), AttackedTarget->Health));
-			if (AttackedTarget->Health <= 0) {
-				//Insert server death here
-				//AttackedTarget->
+			FDirResult DidPlayerBlock = GetPlayerDirections(UKismetMathLibrary::GetForwardVector(AttackedTarget->GetActorRotation()), AttackedTarget);
+			if (AttackedTarget->IsBlocking == true && DidPlayerBlock.CorrectOrientation == true) { // Successfully Blocked
+				if (GEngine)
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Blocked"), AttackedTarget->Health));
 			}
+			else { // Did not succesfully block
+				AttackedTarget->IsBlocking = false;
+				AttackedTarget->BlockingAnimation = false;
+				AttackedTarget->FlinchTrigger = true;
+				AttackedTarget->Health -= CurrentDamage;
+				AttackedTarget->SuccessfullyDefended = false;
+				if (GEngine)
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("%f"), AttackedTarget->Health));
+				if (AttackedTarget->Health <= 0) {
+					//Insert server death here
+					//AttackedTarget->
+				}
+			}
+		}
+	}
+}
+
+//Check if player is facing within 90 degrees of the front of an enemy
+FDirResult ABaseCharacter::GetPlayerDirections(FVector ObjectLocation, AActor * Enemy) {
+	FDirResult Result;
+	FVector Rotation1 = UKismetMathLibrary::Conv_RotatorToVector(UKismetMathLibrary::FindLookAtRotation((Enemy->GetActorLocation()), ObjectLocation));
+	FVector Rotation2 = UKismetMathLibrary::GetForwardVector(this->GetActorRotation());
+	if (UKismetMathLibrary::VSize(Rotation1 - Rotation2) <= 0.9f) {
+		Result.CorrectOrientation = true;
+	}
+	else {
+		Result.CorrectOrientation = false;
+	}
+	Result.Direction = Rotation1;
+	return Result;
+}
+
+//Play when PlayerCollision2 is overlapped
+void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
+	if (OtherActor != this) {
+		Overlapping = true;
+	}
+}
+
+//Play when PlayerCollision2 is ended overlapped
+void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {
+	if (OtherActor != this) {
+		Overlapping = false;
+		Colliding = false;
+	}
+}
+
+void ABaseCharacter::CheckMoveDuringAttack() {
+	if (Overlapping == true) {
+		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
+		RV_TraceParams.bTraceComplex = true;
+		RV_TraceParams.bTraceAsyncScene = true;
+		RV_TraceParams.bReturnPhysicalMaterial = false;
+		RV_TraceParams.bIgnoreBlocks = false;
+
+		//Re-initialize hit info
+		FHitResult Out_Hit(ForceInit);
+
+		//call GetWorld() from within an actor extending class
+		if (GetWorld()->LineTraceSingleByChannel(
+			Out_Hit, 
+			DirectionCamera->GetComponentLocation(),
+			(DirectionCamera->GetForwardVector() * 1000) + DirectionCamera->GetComponentLocation(),
+			COLLISION_DIRECTION, 
+			RV_TraceParams) == true
+			) {
+			Colliding = true;
+		}
+		else {
+			Colliding = false;
 		}
 	}
 }
@@ -274,4 +360,21 @@ void ABaseCharacter::FillHitboxArray() {
 	HitboxArray[3] = Hurtbox3->GetSocketLocation("");
 	HitboxArray[4] = Hurtbox4->GetSocketLocation("");
 	HitboxArray[5] = Hurtbox5->GetSocketLocation("");
+}
+
+/* Forwards function to server */
+void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed) {
+	if (this->HasAuthority()) {
+		PlayActionAnimServer_Implementation(Animation, Speed);
+	}
+}
+
+/* Plays animations from server */
+void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed) {
+	// Get the animation object for the arms mesh
+	UAnimInstance* AnimInstance = this->GetMesh()->GetAnimInstance();
+	if (AnimInstance != NULL)
+	{
+		AnimInstance->Montage_Play(Animation, Speed);
+	}
 }
