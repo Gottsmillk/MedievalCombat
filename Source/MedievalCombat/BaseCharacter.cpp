@@ -60,10 +60,11 @@ ABaseCharacter::ABaseCharacter()
 
 	// Create weapon
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
-	Weapon->SetupAttachment(RootComponent);
 	Weapon->SetVisibility(false);
 	Weapon->SetHiddenInGame(true);
 	Weapon->bGenerateOverlapEvents = false;
+	FName WepSocket = TEXT("Weaponsocket");
+	Weapon->AttachTo(GetMesh(), WepSocket, EAttachLocation::SnapToTarget, true);
 
 	/***** Create weapon hurtboxes *****/
 	// Weapon Hurtbox Base
@@ -174,19 +175,8 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	BlockAnimation();
 	HitboxHandler();
-}
-
-// Called to bind functionality to input
-void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-}
-
-//Function for handling DELAY equivalent from Blueprints
-void ABaseCharacter::onTimerEnd()
-{
 }
 
 //Handling attack hitbox
@@ -215,7 +205,7 @@ void ABaseCharacter::HitboxHandler() {
 				FHitResult Out_Hit(ForceInit);
 
 				//call GetWorld() from within an actor extending class
-				 if (GetWorld()->LineTraceSingleByChannel(Out_Hit, HitboxComponentArray[i]->GetSocketLocation(""), HitboxArray[i], COLLISION_ATTACK, RV_TraceParams) == true) {
+				if (GetWorld()->LineTraceSingleByChannel(Out_Hit, HitboxComponentArray[i]->GetSocketLocation(""), HitboxArray[i], COLLISION_ATTACK, RV_TraceParams) == true) {
 					WeaponHitEvent(Out_Hit);
 					break;
 				}
@@ -228,6 +218,28 @@ void ABaseCharacter::HitboxHandler() {
 			}
 		}
 	}
+}
+
+/* Smooths transition to and fro blocking */
+void ABaseCharacter::BlockAnimation() {
+	if (IsBlocking == true && BlockingAnim < 1) {
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
+	}
+	else if (IsBlocking == false && BlockingAnim > 0) {
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
+	}
+}
+
+// Called to bind functionality to input
+void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+}
+
+//Function for handling DELAY equivalent from Blueprints
+void ABaseCharacter::onTimerEnd()
+{
 }
 
 //Decrements cooldown by .1 every time called, if cd > 0

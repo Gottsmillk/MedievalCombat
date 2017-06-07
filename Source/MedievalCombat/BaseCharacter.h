@@ -140,6 +140,9 @@ public:
 		bool IsBlocking = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		float BlockingAnim = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool AttackWasBlocked = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -256,6 +259,10 @@ public:
 	/** Helper function for Hitbox Handler */
 	UFUNCTION()
 		void FillHitboxArray();
+
+	/** Helper function for Block animation */
+	UFUNCTION()
+		void BlockAnimation();
 
 private:
 	FTimerHandle delayTimerHandle;
