@@ -64,7 +64,7 @@ ABaseCharacter::ABaseCharacter()
 	Weapon->SetHiddenInGame(true);
 	Weapon->bGenerateOverlapEvents = false;
 	FName WepSocket = TEXT("Weaponsocket");
-	Weapon->AttachTo(GetMesh(), WepSocket, EAttachLocation::SnapToTarget, true);
+	Weapon->SetupAttachment(GetMesh(), WepSocket);
 
 	/***** Create weapon hurtboxes *****/
 	// Weapon Hurtbox Base
