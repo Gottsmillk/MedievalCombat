@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "MedievalCombat.h"
 #include "BaseCharacter.h"
 #include "UnrealNetwork.h"
@@ -162,6 +160,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
+	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 }
 
 // Called when the game starts or when spawned
@@ -179,7 +178,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	HitboxHandler();
 }
 
-//Handling attack hitbox
+// Handling attack hitbox
 void ABaseCharacter::HitboxHandler() {
 	if (this->HasAuthority()) {
 		if (CanDamage == true) {
@@ -220,7 +219,7 @@ void ABaseCharacter::HitboxHandler() {
 	}
 }
 
-/* Smooths transition to and fro blocking */
+// Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
@@ -237,12 +236,12 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 }
 
-//Function for handling DELAY equivalent from Blueprints
+// Function for handling DELAY equivalent from Blueprints
 void ABaseCharacter::onTimerEnd()
 {
 }
 
-//Decrements cooldown by .1 every time called, if cd > 0
+// Decrements cooldown by .1 every time called, if cd > 0
 void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
 {
 	if (cd > 0)
@@ -256,7 +255,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 	}
 }
 
-//Attempt at Roll Direction Handler
+// Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
 	if (IsRolling == true)
@@ -277,17 +276,16 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
-//When a hitbox is triggered and a weapon hit
+// When a hitbox is triggered and a weapon hit
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
 		CurrentAttackHit = true;
 		CanDamage = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
 		if (AttackedTarget->Invincible == false && AttackedTarget->SuccessfullyDefended == false) {
-			FDirResult DidPlayerBlock = GetPlayerDirections(UKismetMathLibrary::GetForwardVector(AttackedTarget->GetActorRotation()), AttackedTarget);
-			if (AttackedTarget->IsBlocking == true && DidPlayerBlock.CorrectOrientation == true) { // Successfully Blocked
+			if (AttackedTarget->IsBlocking == true && GetPlayerDirections(AttackedTarget) == true) { // Successfully Blocked
 				if (GEngine)
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Blocked"), AttackedTarget->Health));
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Blocked")));
 			}
 			else { // Did not succesfully block
 				AttackedTarget->IsBlocking = false;
@@ -306,29 +304,26 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	}
 }
 
-//Check if player is facing within 90 degrees of the front of an enemy
-FDirResult ABaseCharacter::GetPlayerDirections(FVector ObjectLocation, AActor * Enemy) {
-	FDirResult Result;
-	FVector Rotation1 = UKismetMathLibrary::Conv_RotatorToVector(UKismetMathLibrary::FindLookAtRotation((Enemy->GetActorLocation()), ObjectLocation));
-	FVector Rotation2 = UKismetMathLibrary::GetForwardVector(this->GetActorRotation());
+// Check if player is facing within 90 degrees of the front of an enemy
+bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
+	FVector Rotation1 = UKismetMathLibrary::Conv_RotatorToVector(UKismetMathLibrary::FindLookAtRotation((Attacked->GetActorLocation()), this->GetActorLocation()));
+	FVector Rotation2 = UKismetMathLibrary::GetForwardVector(Attacked->GetActorRotation());
 	if (UKismetMathLibrary::VSize(Rotation1 - Rotation2) <= 0.9f) {
-		Result.CorrectOrientation = true;
+		return true;
 	}
 	else {
-		Result.CorrectOrientation = false;
+		return false;
 	}
-	Result.Direction = Rotation1;
-	return Result;
 }
 
-//Play when PlayerCollision2 is overlapped
+// Play when PlayerCollision2 is overlapped
 void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
 	if (OtherActor != this) {
 		Overlapping = true;
 	}
 }
 
-//Play when PlayerCollision2 is ended overlapped
+// Play when PlayerCollision2 is ended overlapped
 void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {
 	if (OtherActor != this) {
 		Overlapping = false;
@@ -336,6 +331,7 @@ void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingC
 	}
 }
 
+// Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
 	if (Overlapping == true) {
 		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);

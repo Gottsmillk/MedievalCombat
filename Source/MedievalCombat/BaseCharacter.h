@@ -1,12 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
 /* ***** STRUCTS ***** */
-
+/* Example of a struct
 USTRUCT(BlueprintType)
 struct FDirResult {
 	GENERATED_USTRUCT_BODY()
@@ -15,38 +13,38 @@ struct FDirResult {
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		FVector Direction;
-};
+}; */
 
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	/** Camera boom positioning the camera behind the character (SpringArm)*/
+	/** Camera boom positioning the camera behind the character (SpringArm) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
-	/** Follow camera (FirstPersonCamera)*/
+	/** Follow camera (FirstPersonCamera) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 
 	/** Direction camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* DirectionCamera;
+	class UCameraComponent* DirectionCamera;
 
-	/** Capsule component for player collision (Player)*/
+	/** Capsule component for player collision (Player) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UCapsuleComponent* PlayerCollision;
 	
-	/** Capsule component for player collision (Player)*/
+	/** Capsule component for player collision (Player) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCapsuleComponent* PlayerCollision2;
+	class UCapsuleComponent* PlayerCollision2;
 
-	/** Weapon Mesh object (BasicSword)*/
+	/** Weapon Mesh object (BasicSword) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* Weapon;
 
-	/** Weapon hurtbox base (BasicSwordHurtbox followed by BasicSword1-BasicSword5)*/
+	/** Weapon hurtbox base (BasicSwordHurtbox followed by BasicSword1-BasicSword5) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* WeaponHurtboxBase;
 
@@ -66,28 +64,22 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 	class UBoxComponent* Hurtbox5;
 
 public:
-	// Sets default values for this character's properties
+	/** Sets default values for this character's properties */
 	ABaseCharacter();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
+	/* **************************** Variables **************************** */
+	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
+	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-public:
-	/* **************************** Variables **************************** */
 
 	/* ***** Component Variables ***** */
 
-	/** Returns CameraBoom subobject **/
+	/** Returns CameraBoom subobject */
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-	/** Returns FollowCamera subobject **/
+
+	/** Returns FollowCamera subobject */
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
@@ -135,6 +127,8 @@ public:
 		float CurrentDamage = 0;
 
 	/* ***** Block Handler Variables ***** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool BlockPressed = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool IsBlocking = false;
@@ -239,20 +233,20 @@ public:
 	UFUNCTION()
 		void PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-	/** Example of multicasting */
-	//Function for playing an animation montage 
+	/* Example of multicasting */
+	/** Function for playing an animation montage */
 	UFUNCTION()
 		void PlayActionAnim(UAnimMontage* Animation, float Speed);
 
-	/*Function for server playing an animation montage */
+	/** Function for server playing an animation montage */
 	UFUNCTION(BlueprintCallable, NetMulticast, Unreliable)
 		void PlayActionAnimServer(UAnimMontage* Animation, float Speed); // Ignore green squiggle
 
-	/*Function for finding if two players are within 90 degrees of facing eachother */
+	/** Function for finding if two players are within 90 degrees of facing eachother */
 	UFUNCTION(BlueprintCallable)
-		FDirResult GetPlayerDirections(FVector ObjectLocation, AActor * Enemy); 
+		bool GetPlayerDirections(AActor * Attacked); 
 
-	/* Function for checking if player should move during attack or stay still */
+	/** Function for checking if player should move during attack or stay still */
 	UFUNCTION(BlueprintCallable)
 		void CheckMoveDuringAttack();
 
@@ -263,6 +257,10 @@ public:
 	/** Helper function for Block animation */
 	UFUNCTION()
 		void BlockAnimation();
+
+protected:
+	/** Called when the game starts or when spawned */
+	virtual void BeginPlay() override;
 
 private:
 	FTimerHandle delayTimerHandle;
