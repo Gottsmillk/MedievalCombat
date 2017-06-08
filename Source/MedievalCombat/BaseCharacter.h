@@ -223,6 +223,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
 
+	/* AoE Damage Handler */
+	UFUNCTION(BlueprintCallable)
+		void AoEDamageHandler(UPARAM(ref) float Damage);
+
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()
 		void WeaponHitEvent(FHitResult HitResult);

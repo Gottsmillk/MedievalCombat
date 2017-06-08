@@ -277,6 +277,21 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
+void ABaseCharacter::AoEDamageHandler(UPARAM(ref) float Damage)
+{
+	//Unsure about implementation of Event AnyDamage, could not find good documentation on it.
+	if (!Invincible)
+	{
+		BlockingAnimation = false;
+		IsBlocking = false;
+		Health = Health - Damage;
+		if (Health <= 0)
+		{
+			//ServerDeath(); // Seems to be an unimplemented function
+		}
+	}
+}
+
 //When a hitbox is triggered and a weapon hit
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
