@@ -225,7 +225,7 @@ public:
 
 	/* AoE Damage Handler */
 	UFUNCTION(BlueprintCallable)
-		void AoEDamageHandler(UPARAM(ref) float Damage);
+		void ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()

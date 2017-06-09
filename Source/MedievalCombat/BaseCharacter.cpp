@@ -277,7 +277,7 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
-void ABaseCharacter::AoEDamageHandler(UPARAM(ref) float Damage)
+void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	//Unsure about implementation of Event AnyDamage, could not find good documentation on it.
 	if (!Invincible)
