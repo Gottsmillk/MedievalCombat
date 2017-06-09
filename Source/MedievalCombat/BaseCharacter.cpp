@@ -64,7 +64,7 @@ ABaseCharacter::ABaseCharacter()
 	Weapon->SetHiddenInGame(true);
 	Weapon->bGenerateOverlapEvents = false;
 	FName WepSocket = TEXT("Weaponsocket");
-	Weapon->AttachTo(GetMesh(), WepSocket, EAttachLocation::SnapToTarget, true);
+	Weapon->SetupAttachment(GetMesh(), WepSocket);
 
 	/***** Create weapon hurtboxes *****/
 	// Weapon Hurtbox Base
@@ -278,13 +278,13 @@ void ABaseCharacter::RollDirectionHandler()
 }
 
 //Death Handler Multicast
-void ABaseCharacter::DeathAnimation()
+void ABaseCharacter::DeathAnimation_Implementation()
 {
 	IsDead = true;
 }
 
 //Death Handler Client
-void ABaseCharacter::DeathAnimationForPlayer()
+void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 {
 	CanMove = false;
 	IsRolling = true;
