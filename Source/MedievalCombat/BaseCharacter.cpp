@@ -277,9 +277,9 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
+/* On receiving any damage, will decrement health and if below or equal to zero, dies */
 void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
-	//Unsure about implementation of Event AnyDamage, could not find good documentation on it.
 	if (!Invincible)
 	{
 		BlockingAnimation = false;
