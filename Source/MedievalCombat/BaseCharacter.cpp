@@ -284,7 +284,7 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 	CanMove = false;
 	IsRolling = true;
 	Flinched = false;
-	BlockingAnimation = false;
+	IsBlocking = false;
 	FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line
 	GetMesh()->SetOwnerNoSee(true);
 }
@@ -294,8 +294,6 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 {
 	if (!Invincible)
 	{
-		BlockingAnimation = false;
-		IsBlocking = false;
 		Health = Health - Damage;
 		if (Health <= 0)
 		{
