@@ -3,9 +3,6 @@
 #include "BaseCharacter.h"
 #include "Revenant.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 {
