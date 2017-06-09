@@ -145,11 +145,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
-	DOREPLIFETIME(ABaseCharacter, AttackWasBlocked);
-	DOREPLIFETIME(ABaseCharacter, SuccessfullyDefended);
-	DOREPLIFETIME(ABaseCharacter, RecoilAnim);
-	DOREPLIFETIME(ABaseCharacter, BlockingAnimation);
-	DOREPLIFETIME(ABaseCharacter, HoldingBlock);
 	DOREPLIFETIME(ABaseCharacter, FlinchDuration);
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
 	DOREPLIFETIME(ABaseCharacter, Flinched);
@@ -282,17 +277,15 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 		CurrentAttackHit = true;
 		CanDamage = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
-		if (AttackedTarget->Invincible == false && AttackedTarget->SuccessfullyDefended == false) {
+		if (AttackedTarget->Invincible == false) {
 			if (AttackedTarget->IsBlocking == true && GetPlayerDirections(AttackedTarget) == true) { // Successfully Blocked
 				if (GEngine)
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Blocked")));
 			}
 			else { // Did not succesfully block
 				AttackedTarget->IsBlocking = false;
-				AttackedTarget->BlockingAnimation = false;
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health -= CurrentDamage;
-				AttackedTarget->SuccessfullyDefended = false;
 				if (GEngine)
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("%f"), AttackedTarget->Health));
 				if (AttackedTarget->Health <= 0) {

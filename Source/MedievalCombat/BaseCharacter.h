@@ -136,21 +136,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		float BlockingAnim = 0.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool AttackWasBlocked = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool SuccessfullyDefended = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool RecoilAnim = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool BlockingAnimation = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool HoldingBlock = false;
-
 	/* ***** Flinch Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)

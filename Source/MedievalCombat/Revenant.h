@@ -18,5 +18,27 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 public:
 	// Sets default values for this character's properties
 	ARevenant();
-	
+
+	/** Called to bind functionality to input */
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	/** Event when block is pressed */
+	UFUNCTION()
+	void BlockPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void BlockPressedEventServer();
+
+	UFUNCTION()
+		void BlockPressedEventClient();
+
+	/** Event when block is released */
+	UFUNCTION()
+		void BlockReleasedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void BlockReleasedEventServer();
+
+	UFUNCTION()
+		void BlockReleasedEventClient();
 };
