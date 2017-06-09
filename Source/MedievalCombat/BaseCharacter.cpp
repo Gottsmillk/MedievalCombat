@@ -290,8 +290,7 @@ void ABaseCharacter::DeathAnimationForPlayer()
 	IsRolling = true;
 	Flinched = false;
 	BlockingAnimation = false;
-	FVector newLoc = FVector(-117.5f, 0.0f, 72.5f);
-	FollowCamera->SetRelativeLocation(newLoc); //Unsure about this line
+	FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line
 	GetMesh()->SetOwnerNoSee(true);
 }
 
