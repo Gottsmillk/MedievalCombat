@@ -277,6 +277,24 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
+//Death Handler Multicast
+void ABaseCharacter::DeathAnimation()
+{
+	IsDead = true;
+}
+
+//Death Handler Client
+void ABaseCharacter::DeathAnimationForPlayer()
+{
+	CanMove = false;
+	IsRolling = true;
+	Flinched = false;
+	BlockingAnimation = false;
+	FVector newLoc = FVector(-117.5f, 0.0f, 72.5f);
+	FollowCamera->SetRelativeLocation(newLoc); //Unsure about this line
+	GetMesh()->SetOwnerNoSee(true);
+}
+
 //When a hitbox is triggered and a weapon hit
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {

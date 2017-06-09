@@ -223,6 +223,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
 
+	/* Death Handler, Multicasted */
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void DeathAnimation();
+
+	/* Death Handler, Client */
+	UFUNCTION(BlueprintCallable, Client, Reliable)
+		void DeathAnimationForPlayer();
+
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()
 		void WeaponHitEvent(FHitResult HitResult);
