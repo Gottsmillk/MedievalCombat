@@ -210,6 +210,10 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 		void DeathAnimationForPlayer();
 
+	/* When a character dies */
+	UFUNCTION(BlueprintCallable)
+		void ServerDeath();
+
 	/* On receiving any damage, will decrement health and if below or equal to zero, dies. Overridden function.*/
 	UFUNCTION(BlueprintCallable)
 		void ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);

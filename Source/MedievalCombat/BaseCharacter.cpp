@@ -289,6 +289,14 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 	GetMesh()->SetOwnerNoSee(true);
 }
 
+// When a character dies
+void ABaseCharacter::ServerDeath()
+{
+	this->StopAnimMontage();
+	DeathAnimationForPlayer();
+	DeathAnimation();
+}
+
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */
 void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
@@ -297,8 +305,10 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 		Health = Health - Damage;
 		if (Health <= 0)
 		{
-			//ServerDeath(); // Seems to be an unimplemented function
+			ServerDeath(); // Untested
 		}
+		if (GEngine)
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
 	}
 }
 
