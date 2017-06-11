@@ -222,12 +222,8 @@ public:
 		void RollHandler();
 
 	/* Cancelling roll animations */
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+	UFUNCTION(BlueprintCallable)
 		void RollCancelsAnimEvent();
-
-	/* Serversided roll handler */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation)
-		void RollHandlerServer();
 
 	/* Death Handler, Multicasted */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)

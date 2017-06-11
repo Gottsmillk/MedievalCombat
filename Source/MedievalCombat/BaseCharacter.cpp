@@ -316,31 +316,20 @@ void ABaseCharacter::RollHandler()
 			IsBlocking = false;
 		}
 
-		Resilience = FClamp((Resilience - 25), 0.0f, 100.0f);
+		//Resilience = FClamp((Resilience - 25), 0.0f, 100.0f);
 		CanMove = false;
 		RollAnim = true;
 		Invincible = true;
 		CanDamage = false;
 		IsRolling = true;
-		RetriggerableDelay(this, .9, null); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
+		//RetriggerableDelay(this, .9, null); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
 		IsRolling = false;
 		CanMove = true;
-		RetriggerableDelay(this, .25, null); //SAME SHIT
+		//RetriggerableDelay(this, .25, null); //SAME SHIT
 		CurrentFBLoc = 0;
 		CurrentLRLoc = 0;
 		Invincible = false;
-
-		if (BlockingAnimation)
-		{
-			IsBlocking = true;
-		}
 	}
-}
-
-//Server's roll handler
-void ABaseCharacter::RollHandlerServer()
-{
-	RollHandler();
 }
 
 //Death Handler Multicast
