@@ -40,7 +40,7 @@ bool ARevenant::BlockPressedEventServer_Validate() {
 	return true;
 }
 void ARevenant::BlockPressedEventClient() {
-	IsBlocking = true;
+	BlockPressed = true;
 }
 
 /* Blocks from releasing key */
@@ -60,5 +60,6 @@ bool ARevenant::BlockReleasedEventServer_Validate() {
 	return true;
 }
 void ARevenant::BlockReleasedEventClient() {
+	BlockPressed = false;
 	IsBlocking = false;
 }

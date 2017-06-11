@@ -126,7 +126,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
 		float CurrentDamage = 0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		FString LastAttack = "";
+
 	/* ***** Block Handler Variables ***** */
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool BlockPressed = false;
 
@@ -135,6 +139,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		float BlockingAnim = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		float BlockCooldown = 0.0;
 
 	/* ***** Flinch Variables ***** */
 
@@ -186,6 +193,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float Resilience = 100.0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		float ResilienceDrainAmt = 4.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		float ResilienceRegenAmt = 4.0;
+
 	/* ***** Other Variables ***** */
 
 	/* **************************** Functions **************************** */
@@ -236,7 +249,7 @@ public:
 		void PlayActionAnim(UAnimMontage* Animation, float Speed);
 
 	/** Function for server playing an animation montage */
-	UFUNCTION(BlueprintCallable, NetMulticast, Unreliable)
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
 		void PlayActionAnimServer(UAnimMontage* Animation, float Speed); // Ignore green squiggle
 
 	/** Function for finding if two players are within 90 degrees of facing eachother */
@@ -254,6 +267,32 @@ public:
 	/** Helper function for Block animation */
 	UFUNCTION()
 		void BlockAnimation();
+
+	/** Block Handler */
+	UFUNCTION(BlueprintCallable)
+		void BlockHandler();
+
+	/** Moves current action to last action for attack handler */
+	UFUNCTION(BlueprintCallable)
+	void MakeCurrentActionLastAction(FString CurrentAttack);
+
+	/** Forces all ongoing montages to stop */
+	UFUNCTION()
+		void StopAnimations();
+
+	/** Forces all ongoing montages to stop */
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void StopAnimationsServer();
+	
+	/** Wrapper for relaying animations to clients */
+	UFUNCTION()
+		void RelayAnimation(UAnimMontage* Animation, float Speed);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void RelayAnimationServer(UAnimMontage* Animation, float Speed);
+
+	UFUNCTION()
+		void RelayAnimationClient(UAnimMontage* Animation, float Speed);
 
 protected:
 	/** Called when the game starts or when spawned */

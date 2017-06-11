@@ -145,18 +145,22 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
+	DOREPLIFETIME(ABaseCharacter, LastAttack);
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
+	DOREPLIFETIME(ABaseCharacter, BlockPressed);
+	DOREPLIFETIME(ABaseCharacter, BlockCooldown);
 	DOREPLIFETIME(ABaseCharacter, FlinchDuration);
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
 	DOREPLIFETIME(ABaseCharacter, Flinched);
 	DOREPLIFETIME(ABaseCharacter, RollAnim);
 	DOREPLIFETIME(ABaseCharacter, RollSpeed);
 	DOREPLIFETIME(ABaseCharacter, Resilience);
+	DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
+	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 	DOREPLIFETIME(ABaseCharacter, CanMove);
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
-	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 }
 
 // Called when the game starts or when spawned
@@ -172,6 +176,14 @@ void ABaseCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	BlockAnimation();
 	HitboxHandler();
+	BlockHandler();
+}
+
+// Called to bind functionality to input
+void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
 }
 
 // Handling attack hitbox
@@ -215,6 +227,24 @@ void ABaseCharacter::HitboxHandler() {
 	}
 }
 
+// Handling block toggle
+void ABaseCharacter::BlockHandler() {
+	if (BlockPressed == true) {
+		if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
+			if (BlockCooldown == 0) {
+				if (LastAttack != "Block") {
+					MakeCurrentActionLastAction("Block");
+				}
+				StopAnimations();
+				IsBlocking = true;
+			}
+		}
+		else {
+			IsBlocking = false;
+		}
+	}
+}
+
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1) {
@@ -223,13 +253,6 @@ void ABaseCharacter::BlockAnimation() {
 	else if (IsBlocking == false && BlockingAnim > 0) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
 	}
-}
-
-// Called to bind functionality to input
-void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
 // Function for handling DELAY equivalent from Blueprints
@@ -309,20 +332,18 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 		CanDamage = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
 		if (AttackedTarget->Invincible == false) {
-			if (AttackedTarget->IsBlocking == true && GetPlayerDirections(AttackedTarget) == true) { // Successfully Blocked
-				if (GEngine)
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Blocked")));
-			}
-			else { // Did not succesfully block
+			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health -= CurrentDamage;
-				if (GEngine)
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("%f"), AttackedTarget->Health));
 				if (AttackedTarget->Health <= 0) {
-					//Insert server death here
-					//AttackedTarget->
+					//AttackedTarget->ServerDeath();
 				}
+			}
+			else { // Correctly blocked
+				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
+				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
+				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
 			}
 		}
 	}
@@ -383,6 +404,24 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 	}
 }
 
+/* Moves CurrentAction to LastAction */
+void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
+
+}
+
+void ABaseCharacter::StopAnimations() {
+	if (this->HasAuthority()) {
+		StopAnimationsServer_Implementation();
+	}
+	else {
+		this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
+	}
+}
+
+void ABaseCharacter::StopAnimationsServer_Implementation() {
+	this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
+}
+
 /* Please only put helper functions here (functions called by a main function) */
 void ABaseCharacter::FillHitboxArray() {
 	// Store the hurtboxes inside the hitbox component array
@@ -397,16 +436,34 @@ void ABaseCharacter::FillHitboxArray() {
 /* Forwards function to server */
 void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed) {
 	if (this->HasAuthority()) {
-		PlayActionAnimServer_Implementation(Animation, Speed);
+		PlayActionAnimServer(Animation, Speed);
 	}
 }
 
 /* Plays animations from server */
 void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed) {
-	// Get the animation object for the arms mesh
-	UAnimInstance* AnimInstance = this->GetMesh()->GetAnimInstance();
-	if (AnimInstance != NULL)
+	if (this->GetMesh()->GetAnimInstance() != NULL)
 	{
-		AnimInstance->Montage_Play(Animation, Speed);
+		this->GetMesh()->GetAnimInstance()->Montage_Play(Animation, Speed);
 	}
+}
+
+/* Wrapper for playing animations and displaying for client too */
+void ABaseCharacter::RelayAnimation(UAnimMontage* Animation, float Speed) {
+	if (this->HasAuthority()) {
+		RelayAnimationServer(Animation, Speed);
+	}
+	else {
+		RelayAnimationServer(Animation, Speed);
+		RelayAnimationClient(Animation, Speed);
+	}
+}
+void ABaseCharacter::RelayAnimationServer_Implementation(UAnimMontage* Animation, float Speed) {
+	RelayAnimationClient(Animation, Speed);
+}
+bool ABaseCharacter::RelayAnimationServer_Validate(UAnimMontage* Animation, float Speed) {
+	return true;
+}
+void ABaseCharacter::RelayAnimationClient(UAnimMontage* Animation, float Speed) {
+	PlayActionAnimServer(Animation, Speed);
 }
