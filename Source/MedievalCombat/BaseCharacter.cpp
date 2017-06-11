@@ -4,6 +4,8 @@
 #include "UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
+
 
 #define COLLISION_ATTACK ECC_GameTraceChannel4
 #define COLLISION_DIRECTION ECC_GameTraceChannel5
@@ -273,8 +275,6 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
 	}
 }
-
-// Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
 	if (IsRolling == true)
@@ -293,6 +293,54 @@ void ABaseCharacter::RollDirectionHandler()
 		}
 
 	}
+}
+
+void ABaseCharacter::RollCancelsAnimEvent()
+{
+	GetMesh()->GetAnimInstance()->Montage_Stop(0.0);
+}
+
+//idk what I'm doing but here's an attempt at Roll Handler
+void ABaseCharacter::RollHandler()
+{
+	if (GetCharacterMovement()->IsMovingOnGround() && !IsRolling)
+	{
+		if (Flinched)
+		{
+			Flinched = false;
+			FlinchTrigger = false;
+		}
+		RollCancelsAnimEvent();
+		if (IsBlocking)
+		{
+			IsBlocking = false;
+		}
+
+		Resilience = FClamp((Resilience - 25), 0.0f, 100.0f);
+		CanMove = false;
+		RollAnim = true;
+		Invincible = true;
+		CanDamage = false;
+		IsRolling = true;
+		RetriggerableDelay(this, .9, null); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
+		IsRolling = false;
+		CanMove = true;
+		RetriggerableDelay(this, .25, null); //SAME SHIT
+		CurrentFBLoc = 0;
+		CurrentLRLoc = 0;
+		Invincible = false;
+
+		if (BlockingAnimation)
+		{
+			IsBlocking = true;
+		}
+	}
+}
+
+//Server's roll handler
+void ABaseCharacter::RollHandlerServer()
+{
+	RollHandler();
 }
 
 //Death Handler Multicast

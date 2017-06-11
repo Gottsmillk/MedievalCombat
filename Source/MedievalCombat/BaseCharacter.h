@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "BaseCharacter.generated.h"
 
 /* ***** STRUCTS ***** */
@@ -214,6 +216,18 @@ public:
 	/** Roll Direction Handler */
 	UFUNCTION(BlueprintCallable)
 		void RollDirectionHandler();
+
+	/* Attempt at Roll Handler, for when character rolls */
+	UFUNCTION(BlueprintCallable)
+		void RollHandler();
+
+	/* Cancelling roll animations */
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void RollCancelsAnimEvent();
+
+	/* Serversided roll handler */
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation)
+		void RollHandlerServer();
 
 	/* Death Handler, Multicasted */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
