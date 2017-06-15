@@ -17,29 +17,29 @@ ABaseCharacter::ABaseCharacter()
 	GetCapsuleComponent()->SetVisibility(false);
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 70.0f);
 
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	GetCharacterMovement()->bOrientRotationToMovement = false; // Character moves in the direction of input...	
 
-	// Create a camera boom (pulls in towards the player if there is a collision)
+															   // Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->bUsePawnControlRotation = true;
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
-	// Create a follow camera
+												// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	// Create a direction camera
+												   // Create a direction camera
 	DirectionCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DirectionCamera"));
 	DirectionCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	DirectionCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	// Create a capsule component to avoid people going through eachother
+													  // Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
 	PlayerCollision->SetVisibility(false);
 	PlayerCollision->InitCapsuleSize(70.0f, 120.0f);
@@ -163,22 +163,24 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
+	DOREPLIFETIME(ABaseCharacter, IsRolling);
 }
 
 // Called when the game starts or when spawned
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	//Start Regen/Drain handlers
+	GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 }
 
 // Called every frame
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	BlockAnimation();
 	HitboxHandler();
 	BlockHandler();
+	BlockAnimation();
 }
 
 // Called to bind functionality to input
@@ -234,15 +236,45 @@ void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
 		if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
 			if (BlockCooldown == 0) {
-				if (LastAttack != "Block") {
-					MakeCurrentActionLastAction("Block");
-				}
 				StopAnimations();
 				IsBlocking = true;
+				if (ResilienceRegenTimerHandle.IsValid() == true) {
+					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+				}
+				if (ResilienceDrainTimerHandle.IsValid() == false) {
+					GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
+				}
+			}
+			else {
+				if (IsBlocking == true) {
+					IsBlocking = false;
+				}
+				if (ResilienceRegenTimerHandle.IsValid() == false) {
+					GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+				}
+				if (ResilienceDrainTimerHandle.IsValid() == true) {
+					GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+				}
 			}
 		}
 		else {
-			IsBlocking = false;
+			if (IsBlocking == true) {
+				IsBlocking = false;
+			}
+			if (ResilienceRegenTimerHandle.IsValid() == false) {
+				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+			}
+			if (ResilienceDrainTimerHandle.IsValid() == true) {
+				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+			}
+		}
+	}
+	else {
+		if (ResilienceRegenTimerHandle.IsValid() == false) {
+			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+		}
+		if (ResilienceDrainTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 		}
 	}
 }
@@ -273,62 +305,6 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 	{
 		cd = 0;
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
-	}
-}
-void ABaseCharacter::RollDirectionHandler()
-{
-	if (IsRolling == true)
-	{
-		// Left or Right input
-		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
-
-		// Forward or Back input
-		if (CurrentFBLoc != 0)
-		{
-			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
-		}
-		else if (CurrentFBLoc == 0 && CurrentLRLoc == 0)
-		{
-			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
-		}
-
-	}
-}
-
-void ABaseCharacter::RollCancelsAnimEvent()
-{
-	GetMesh()->GetAnimInstance()->Montage_Stop(0.0);
-}
-
-//idk what I'm doing but here's an attempt at Roll Handler
-void ABaseCharacter::RollHandler()
-{
-	if (GetCharacterMovement()->IsMovingOnGround() && !IsRolling)
-	{
-		if (Flinched)
-		{
-			Flinched = false;
-			FlinchTrigger = false;
-		}
-		RollCancelsAnimEvent();
-		if (IsBlocking)
-		{
-			IsBlocking = false;
-		}
-
-		//Resilience = FClamp((Resilience - 25), 0.0f, 100.0f);
-		CanMove = false;
-		RollAnim = true;
-		Invincible = true;
-		CanDamage = false;
-		IsRolling = true;
-		//RetriggerableDelay(this, .9, null); //IDK WTF THE PARAMETERS ARE SUPPOSED TO BE (supposed to be 3)
-		IsRolling = false;
-		CanMove = true;
-		//RetriggerableDelay(this, .25, null); //SAME SHIT
-		CurrentFBLoc = 0;
-		CurrentLRLoc = 0;
-		Invincible = false;
 	}
 }
 
@@ -427,10 +403,10 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 
 		//call GetWorld() from within an actor extending class
 		if (GetWorld()->LineTraceSingleByChannel(
-			Out_Hit, 
+			Out_Hit,
 			DirectionCamera->GetComponentLocation(),
 			(DirectionCamera->GetForwardVector() * 1000) + DirectionCamera->GetComponentLocation(),
-			COLLISION_DIRECTION, 
+			COLLISION_DIRECTION,
 			RV_TraceParams) == true
 			) {
 			Colliding = true;
@@ -503,4 +479,61 @@ bool ABaseCharacter::RelayAnimationServer_Validate(UAnimMontage* Animation, floa
 }
 void ABaseCharacter::RelayAnimationClient(UAnimMontage* Animation, float Speed) {
 	PlayActionAnimServer(Animation, Speed);
+}
+
+/* Resilience drain and regen */
+void ABaseCharacter::ResilienceRegenTimer() {
+	if (Resilience < 100) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceRegenAmt, 0, 100);
+	}
+}
+void ABaseCharacter::ResilienceDrainTimer() {
+	if (Resilience >= 4) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience - ResilienceDrainAmt, 0, 100);
+	}
+}
+
+/* **************************** Button Presses **************************** */
+/* Block */
+void ABaseCharacter::BlockPressedEventClient() {
+	CanDamage = false;
+	Resilience -= 4;
+	BlockPressed = true;
+	if (LastAttack != "Block") {
+		MakeCurrentActionLastAction("Block");
+	}
+}
+void ABaseCharacter::BlockReleasedEventClient() {
+	BlockPressed = false;
+	IsBlocking = false;
+}
+/* Roll */
+void ABaseCharacter::RollPressedEventClient() {
+	Resilience -= 25;
+	IsRolling = true;
+	MakeCurrentActionLastAction("Roll");
+	Flinched = false;
+	IsBlocking = false;
+	Invincible = true;
+	CanDamage = false;
+	if (ResilienceRegenTimerHandle.IsValid() == true) {
+		GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+	}
+	if (ResilienceDrainTimerHandle.IsValid() == true) {
+		GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+	}
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.745f, false);
+}
+void ABaseCharacter::RollPressedEventClient2() {
+	IsRolling = false;
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
+}
+void ABaseCharacter::RollPressedEventClient3() {
+	Invincible = false;
+	if (ResilienceRegenTimerHandle.IsValid() == false) {
+		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
+	}
+	if (ResilienceDrainTimerHandle.IsValid() == false) {
+		GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
+	}
 }

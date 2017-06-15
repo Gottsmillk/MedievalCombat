@@ -164,7 +164,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
 		bool RollAnim = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
 		bool IsRolling = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
@@ -212,18 +212,6 @@ public:
 	/** Hitbox Handler */
 	UFUNCTION(BlueprintCallable)
 		void HitboxHandler();
-
-	/** Roll Direction Handler */
-	UFUNCTION(BlueprintCallable)
-		void RollDirectionHandler();
-
-	/* Attempt at Roll Handler, for when character rolls */
-	UFUNCTION(BlueprintCallable)
-		void RollHandler();
-
-	/* Cancelling roll animations */
-	UFUNCTION(BlueprintCallable)
-		void RollCancelsAnimEvent();
 
 	/* Death Handler, Multicasted */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
@@ -304,10 +292,35 @@ public:
 	UFUNCTION()
 		void RelayAnimationClient(UAnimMontage* Animation, float Speed);
 
+	/** Event for resilience regen */
+	UFUNCTION()
+		void ResilienceRegenTimer();
+
+	/** Event for resilience drain */
+	UFUNCTION()
+		void ResilienceDrainTimer();
+
+	/* **************************** Button Presses **************************** */
+	/* Block */
+	UFUNCTION()
+		void BlockPressedEventClient();
+	UFUNCTION()
+		void BlockReleasedEventClient();
+	/* Roll */
+	UFUNCTION()
+		void RollPressedEventClient();
+	UFUNCTION()
+		void RollPressedEventClient2();
+	UFUNCTION()
+		void RollPressedEventClient3();
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
 
-private:
+	/** Timers */
+	FTimerHandle ResilienceRegenTimerHandle;
+	FTimerHandle ResilienceDrainTimerHandle;
 	FTimerHandle delayTimerHandle;
+
+private:
 };

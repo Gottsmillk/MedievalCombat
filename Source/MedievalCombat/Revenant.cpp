@@ -14,6 +14,13 @@ ARevenant::ARevenant()
 	Shield->SetupAttachment(GetMesh(), ShieldSocket);
 }
 
+// Called when the game starts or when spawned
+void ARevenant::BeginPlay()
+{
+	Super::BeginPlay();
+
+}
+
 // Called to bind functionality to input
 void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -21,6 +28,7 @@ void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	InputComponent->BindAction("Block", IE_Pressed, this, &ARevenant::BlockPressedEvent);
 	InputComponent->BindAction("Block", IE_Released, this, &ARevenant::BlockReleasedEvent);
+	InputComponent->BindAction("Roll", IE_Pressed, this, &ARevenant::RollPressedEvent);
 }
 
 /* Blocks from pressing key */
@@ -39,9 +47,6 @@ void ARevenant::BlockPressedEventServer_Implementation() {
 bool ARevenant::BlockPressedEventServer_Validate() {
 	return true;
 }
-void ARevenant::BlockPressedEventClient() {
-	BlockPressed = true;
-}
 
 /* Blocks from releasing key */
 void ARevenant::BlockReleasedEvent() {
@@ -59,7 +64,22 @@ void ARevenant::BlockReleasedEventServer_Implementation() {
 bool ARevenant::BlockReleasedEventServer_Validate() {
 	return true;
 }
-void ARevenant::BlockReleasedEventClient() {
-	BlockPressed = false;
-	IsBlocking = false;
+
+/* Rolls from pressing key */
+void ARevenant::RollPressedEvent() {
+	if (IsRolling == false && Resilience >= 25 && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		if (this->HasAuthority()) {
+			RollPressedEventServer();
+		}
+		else {
+			RollPressedEventServer();
+			RollPressedEventClient();
+		}
+	}
+}
+void ARevenant::RollPressedEventServer_Implementation() {
+	RollPressedEventClient();
+}
+bool ARevenant::RollPressedEventServer_Validate() {
+	return true;
 }

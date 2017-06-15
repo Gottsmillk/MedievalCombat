@@ -26,9 +26,6 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void BlockPressedEventServer();
 
-	UFUNCTION()
-		void BlockPressedEventClient();
-
 	/** Event when block is released */
 	UFUNCTION()
 		void BlockReleasedEvent();
@@ -36,6 +33,14 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void BlockReleasedEventServer();
 
+	/** Event when roll is pressed */
 	UFUNCTION()
-		void BlockReleasedEventClient();
+		void RollPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void RollPressedEventServer();
+
+protected:
+	/** Called when the game starts or when spawned */
+	virtual void BeginPlay() override;
 };
