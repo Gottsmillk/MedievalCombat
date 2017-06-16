@@ -237,6 +237,7 @@ void ABaseCharacter::BlockHandler() {
 			if (BlockCooldown == 0) {
 				StopAnimations();
 				IsBlocking = true;
+				BlockCooldown = 1;
 				if (ResilienceRegenTimerHandle.IsValid() == true) {
 					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 				}
@@ -291,20 +292,6 @@ void ABaseCharacter::BlockAnimation() {
 // Function for handling DELAY equivalent from Blueprints
 void ABaseCharacter::onTimerEnd()
 {
-}
-
-// Decrements cooldown by .1 every time called, if cd > 0
-void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
-{
-	if (cd > 0)
-	{
-		cd -= .1;
-	}
-	else
-	{
-		cd = 0;
-		GetWorld()->GetTimerManager().ClearTimer(Handle);
-	}
 }
 
 //Death Handler Multicast

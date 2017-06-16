@@ -192,10 +192,6 @@ public:
 
 	/* **************************** Functions **************************** */
 
-	/**Decrements cooldown by .1 every time called, if cd > 0 */
-	UFUNCTION(BlueprintCallable)
-		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
-
 	/** Hitbox Handler */
 	UFUNCTION(BlueprintCallable)
 		void HitboxHandler();
@@ -259,7 +255,7 @@ public:
 
 	/** Moves current action to last action for attack handler */
 	UFUNCTION(BlueprintCallable)
-	void MakeCurrentActionLastAction(FString CurrentAttack);
+		void MakeCurrentActionLastAction(FString CurrentAttack);
 
 	/** Forces all ongoing montages to stop */
 	UFUNCTION()
