@@ -111,9 +111,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
 		float MaxHealth = 100.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
-		float KnockbackValue = 0;
-
 	/* ***** Attack Handler Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
@@ -146,29 +143,19 @@ public:
 		float BlockCooldown = 0.0;
 
 	/* ***** Flinch Variables ***** */
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
-		float FlinchDuration = 0.0;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool FlinchTrigger = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool Flinched = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Flinch)
-		bool CantFlinch = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
+		bool SuperArmor = false;
 
 	/* ***** Roll Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
-		bool RollAnim = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
 		bool IsRolling = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
-		float RollSpeed = 1.0;
 
 	/* ***** Movement Variables ***** */
 
@@ -300,6 +287,19 @@ public:
 	UFUNCTION()
 		void ResilienceDrainTimer();
 
+	/** Flinch Event */
+	UFUNCTION()
+		void FlinchEventTrigger();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void FlinchEventServer();
+
+	UFUNCTION()
+		void FlinchEvent();
+
+	UFUNCTION()
+		void FlinchEvent2();
+
 	/* **************************** Button Presses **************************** */
 	/* Block */
 	UFUNCTION()
@@ -313,6 +313,7 @@ public:
 		void RollPressedEventClient2();
 	UFUNCTION()
 		void RollPressedEventClient3();
+
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;

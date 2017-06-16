@@ -151,11 +151,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
 	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 	DOREPLIFETIME(ABaseCharacter, BlockCooldown);
-	DOREPLIFETIME(ABaseCharacter, FlinchDuration);
-	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
 	DOREPLIFETIME(ABaseCharacter, Flinched);
-	DOREPLIFETIME(ABaseCharacter, RollAnim);
-	DOREPLIFETIME(ABaseCharacter, RollSpeed);
+	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
+	DOREPLIFETIME(ABaseCharacter, SuperArmor);
 	DOREPLIFETIME(ABaseCharacter, Resilience);
 	DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
 	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
@@ -181,6 +179,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	HitboxHandler();
 	BlockHandler();
 	BlockAnimation();
+	FlinchEventTrigger();
 }
 
 // Called to bind functionality to input
@@ -319,6 +318,7 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 {
 	CanMove = false;
 	IsRolling = true;
+	FlinchTrigger = false;
 	Flinched = false;
 	IsBlocking = false;
 	FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line
@@ -348,6 +348,8 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
+				if (GEngine)
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
 				AttackedTarget->Health -= CurrentDamage;
 				if (AttackedTarget->Health <= 0) {
 					//AttackedTarget->ServerDeath();
@@ -493,6 +495,45 @@ void ABaseCharacter::ResilienceDrainTimer() {
 	}
 }
 
+/* Flinch Handler */
+void ABaseCharacter::FlinchEventTrigger() {
+	if (FlinchTrigger == true) {
+		if (this->HasAuthority()) {
+			FlinchEventServer();
+		}
+		else {
+			FlinchEventServer();
+			FlinchEvent();
+		}
+	}
+}
+void ABaseCharacter::FlinchEventServer_Implementation() {
+	FlinchEvent();
+}
+bool ABaseCharacter::FlinchEventServer_Validate() {
+	return true;
+}
+void ABaseCharacter::FlinchEvent() {
+	if (Health > 0 && SuperArmor == false) {
+		FlinchTrigger = false;
+		StopAnimations();
+		CanMove = false;
+		Flinched = true;
+		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
+		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
+		PlayActionAnim(FlinchAnimMontage, 1.0f);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, 1.1f, false);
+	}
+}
+void ABaseCharacter::FlinchEvent2() {
+	if (IsRolling == false) {
+		CanMove = true;
+	}
+	if (Flinched == true) {
+		Flinched = false;
+	}
+}
+
 /* **************************** Button Presses **************************** */
 /* Block */
 void ABaseCharacter::BlockPressedEventClient() {
@@ -512,6 +553,7 @@ void ABaseCharacter::RollPressedEventClient() {
 	Resilience -= 25;
 	IsRolling = true;
 	MakeCurrentActionLastAction("Roll");
+	FlinchTrigger = false;
 	Flinched = false;
 	IsBlocking = false;
 	Invincible = true;
