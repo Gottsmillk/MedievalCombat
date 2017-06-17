@@ -527,8 +527,6 @@ void ABaseCharacter::BleedEvent() {
 	if (!Invincible)
 	{
 		Health = Health - 3;
-		if ((rand() % 101) < 5)//RandRange(0, 100) OR RandomIntegerInRange(0, 100) neither work
-			FlinchTrigger = true;
 		//if (Health <= 0) //There's an error during compiling if an if statement doesn't have anything to execute if conditions are met
 			//this.ServerDeath(); //Currently only implemented in DeathHandler branch with bugs that need fixing
 	}
