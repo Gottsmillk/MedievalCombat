@@ -210,9 +210,12 @@ public:
 	UFUNCTION(BlueprintCallable, Client, Reliable)
 		void DeathAnimationForPlayer();
 
-	/* When a character dies */
+	/* When a character dies, now also including SwordCharacter's overwritten Server Death */
 	UFUNCTION(BlueprintCallable)
 		void ServerDeath();
+
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation)
+		void RespawnEvent();
 
 	/* On receiving any damage, will decrement health and if below or equal to zero, dies. Overridden function.*/
 	UFUNCTION(BlueprintCallable)
