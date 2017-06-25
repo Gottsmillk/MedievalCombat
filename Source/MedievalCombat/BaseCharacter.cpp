@@ -292,25 +292,28 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 // When a character dies
 void ABaseCharacter::ServerDeath()
 {
+	IsDead = true;
 	this->StopAnimMontage();
 	DeathAnimationForPlayer();
 	DeathAnimation();
-	UKismetSystemLibrary::Delay(this, 5, NULL);
-	/*if (this->HasAuthority())
-	{
-		// I don't think authority switch is necessary. If it is, just copy/paste the code of the RespawnEvent into this switch statement.
-	}
-	else*/
-		RespawnEvent();
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent_Implementation, 5.0f, false);
 }
 
+//False respawn
 void ABaseCharacter::RespawnEvent_Implementation()
 {
-	ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
+	//TODO: Implement Teleportation to spawn, and death animation stuff
+	
+	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
 	RespawnedChar->SpawnDefaultController();
 	this->GetController()->Possess(RespawnedChar);
 	UKismetSystemLibrary::Delay(this, .5, NULL);
-	this->K2_DestroyActor();
+	this->K2_DestroyActor();*/
+}
+
+bool ABaseCharacter::RespawnEvent_Validate()
+{
+	return true;
 }
 
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */
