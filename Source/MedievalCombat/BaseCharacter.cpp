@@ -303,7 +303,7 @@ void ABaseCharacter::ServerDeath()
 void ABaseCharacter::RespawnEvent_Implementation()
 {
 	//TODO: Implement Teleportation to spawn, and death animation stuff
-	
+	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
 	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
 	RespawnedChar->SpawnDefaultController();
 	this->GetController()->Possess(RespawnedChar);
