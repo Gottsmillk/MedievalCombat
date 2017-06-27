@@ -128,6 +128,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		FString LastAttack = "";
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool RotateAttack = false;
+
 	/* ***** Block Handler Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -187,6 +190,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		float ResilienceRegenAmt = 4.0;
+
+	/* ***** Cooldown Variables ***** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		float AttackCastCooldown = 0;
 
 	/* ***** Other Variables ***** */
 
@@ -252,6 +259,32 @@ public:
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
 		void BlockHandler();
+
+	/** Attack Handler */
+	UFUNCTION(BlueprintCallable)
+		void AttackHandler(
+			FString AttackName,
+			UPARAM(ref) float &Cooldown,
+			float CooldownAmt,
+			float CastCooldownAmt,
+			bool IsChainable,
+			UAnimMontage* Animation,
+			float DelayBeforeHitbox,
+			float LengthOfHitbox,
+			float Damage
+		);
+	UFUNCTION()
+		void AttackHandler2(FString AttackName, float LengthOfHitbox);
+	UFUNCTION()
+		void AttackHandler3(FString AttackName);
+
+	/** Checks if the current attack should be chainable */
+	UFUNCTION()
+		bool CheckChainable(FString CurrentAttack);
+
+	/** Checks if the current attack should be carried out */
+	UFUNCTION()
+		bool IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt);
 
 	/** Moves current action to last action for attack handler */
 	UFUNCTION(BlueprintCallable)

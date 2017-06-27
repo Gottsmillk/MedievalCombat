@@ -17,29 +17,35 @@ ABaseCharacter::ABaseCharacter()
 	GetCapsuleComponent()->SetVisibility(false);
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 70.0f);
 
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame. You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	// Character moves in the direction of input...	
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 
-	GetCharacterMovement()->bOrientRotationToMovement = false; // Character moves in the direction of input...	
-
-															   // Create a camera boom (pulls in towards the player if there is a collision)
+	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->bUsePawnControlRotation = true;
-	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	// The camera follows at this distance behind the character	
+	CameraBoom->TargetArmLength = 300.0f;
+	// Rotate the arm based on the controller
+	CameraBoom->bUsePawnControlRotation = true; 
 
-												// Create a follow camera
+	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	// Camera does not rotate relative to arm
+	FollowCamera->bUsePawnControlRotation = false;
 
-												   // Create a direction camera
+	// Create a direction camera
 	DirectionCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DirectionCamera"));
-	DirectionCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	DirectionCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	DirectionCamera->SetupAttachment(RootComponent);
+	// Camera does not rotate relative to arm
+	DirectionCamera->bUsePawnControlRotation = false;
 
-													  // Create a capsule component to avoid people going through eachother
+	// Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
 	PlayerCollision->SetVisibility(false);
 	PlayerCollision->InitCapsuleSize(70.0f, 120.0f);
@@ -162,6 +168,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
+	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
+	DOREPLIFETIME(ABaseCharacter, RotateAttack);
 }
 
 // Called when the game starts or when spawned
@@ -177,8 +185,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	HitboxHandler();
-	BlockHandler();
 	BlockAnimation();
+	BlockHandler();
 	FlinchEventTrigger();
 }
 
@@ -234,10 +242,11 @@ void ABaseCharacter::HitboxHandler() {
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
 		if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
-			if (BlockCooldown == 0) {
-				StopAnimations();
+			if (BlockCooldown == 0.0f) {
+				//StopAnimations();
 				IsBlocking = true;
-				BlockCooldown = 1;
+				CanDamage = false;
+				//BlockCooldown = 1;
 				if (ResilienceRegenTimerHandle.IsValid() == true) {
 					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 				}
@@ -335,8 +344,6 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
-				if (GEngine)
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
 				AttackedTarget->Health -= CurrentDamage;
 				if (AttackedTarget->Health <= 0) {
 					//AttackedTarget->ServerDeath();
@@ -408,7 +415,12 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 
 /* Moves CurrentAction to LastAction */
 void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
-
+	if (CurrentAttack == "SideStep" || CurrentAttack == "Roll" || CurrentAttack == "Block" || CurrentAttackHit == true) {
+		LastAttack = CurrentAttack;
+	}
+	else {
+		LastAttack == "Missed";
+	}
 }
 
 void ABaseCharacter::StopAnimations() {
@@ -521,6 +533,77 @@ void ABaseCharacter::FlinchEvent2() {
 	}
 }
 
+/** Attack Handler */
+void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
+	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true) {
+		CanAttack = false;
+		//Change sensitivity
+		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
+		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
+		PlayActionAnim(Animation, 1.0f);
+		FTimerDelegate TimerDel;
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
+	}
+}
+void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox) {
+	if (IsRolling == false) {
+		CanDamage = true;
+	}
+	FTimerDelegate TimerDel;
+	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
+}
+void ABaseCharacter::AttackHandler3(FString AttackName) {
+	MakeCurrentActionLastAction(AttackName);
+	CanDamage = false;
+	CurrentDamage = 0.0f;
+	CurrentAttackHit = false;
+	CanAttack = true;
+	//Reset sensitivity
+}
+
+/** Checks if the current attack should be carried out */
+bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
+	// If you are not in cast cooldown or attack cooldown
+	if (CastCooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+		return true;
+	}
+	// If you are still in cast cooldown
+	else if (CastCooldownAmt >= UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsChainable == true) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+/** Checks if the current attack should be chainable */
+bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
+	if (CurrentAttack == "SBasicAttack") {
+		if (LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	else if (CurrentAttack == "HBasicAttack") {
+		if (LastAttack == "SBasicAttack" || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	else if (CurrentAttack == "ComboExtender") {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 /* **************************** Button Presses **************************** */
 /* Block */
 void ABaseCharacter::BlockPressedEventClient() {
@@ -545,6 +628,7 @@ void ABaseCharacter::RollPressedEventClient() {
 	IsBlocking = false;
 	Invincible = true;
 	CanDamage = false;
+	CanMove = false;
 	if (ResilienceRegenTimerHandle.IsValid() == true) {
 		GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 	}
@@ -559,6 +643,7 @@ void ABaseCharacter::RollPressedEventClient2() {
 }
 void ABaseCharacter::RollPressedEventClient3() {
 	Invincible = false;
+	CanMove = false;
 	if (ResilienceRegenTimerHandle.IsValid() == false) {
 		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 	}
