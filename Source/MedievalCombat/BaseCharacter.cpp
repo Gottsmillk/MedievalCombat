@@ -217,10 +217,10 @@ void ABaseCharacter::HitboxHandler() {
 
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
-	if (IsBlocking == true && BlockingAnim < 1) {
+	if (IsBlocking == true && BlockingAnim < 1 && !IsDead) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
 	}
-	else if (IsBlocking == false && BlockingAnim > 0) {
+	else if (IsBlocking == false && BlockingAnim > 0 && !IsDead) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
 	}
 }
@@ -254,7 +254,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 // Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
-	if (IsRolling == true)
+	if (IsRolling == true && !IsDead)
 	{
 		// Left or Right input
 		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
@@ -285,14 +285,17 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 	IsRolling = true;
 	Flinched = false;
 	IsBlocking = false;
-	FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line
-	GetMesh()->SetOwnerNoSee(true);
+	//FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line, may be unnecessary
+	//GetMesh()->SetOwnerNoSee(true);
 }
 
 // When a character dies
 void ABaseCharacter::ServerDeath()
 {
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
 	IsDead = true;
+	this->SetActorEnableCollision(false);
 	this->StopAnimMontage();
 	DeathAnimationForPlayer();
 	DeathAnimation();
@@ -302,8 +305,15 @@ void ABaseCharacter::ServerDeath()
 //False respawn
 void ABaseCharacter::RespawnEvent_Implementation()
 {
-	//TODO: Implement Teleportation to spawn, and death animation stuff
+	//TODO: Implement death animation stuff
 	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
+	this->SetActorEnableCollision(true);
+	CanMove = true;
+	IsRolling = false;
+	IsDead = false;
+	Health = 100;
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
 	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
 	RespawnedChar->SpawnDefaultController();
 	this->GetController()->Possess(RespawnedChar);
