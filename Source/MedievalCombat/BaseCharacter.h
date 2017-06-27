@@ -128,9 +128,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		FString LastAttack = "";
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool RotateAttack = false;
-
 	/* ***** Block Handler Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -234,11 +231,11 @@ public:
 	/* Example of multicasting */
 	/** Function for playing an animation montage */
 	UFUNCTION()
-		void PlayActionAnim(UAnimMontage* Animation, float Speed);
+		void PlayActionAnim(UAnimMontage* Animation, float Speed, bool IsAttack);
 
 	/** Function for server playing an animation montage */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void PlayActionAnimServer(UAnimMontage* Animation, float Speed); // Ignore green squiggle
+		void PlayActionAnimServer(UAnimMontage* Animation, float Speed, bool IsAttack); // Ignore green squiggle
 
 	/** Function for finding if two players are within 90 degrees of facing eachother */
 	UFUNCTION(BlueprintCallable)
@@ -255,6 +252,16 @@ public:
 	/** Helper function for Block animation */
 	UFUNCTION()
 		void BlockAnimation();
+
+	/** Block Handler */
+	UFUNCTION()
+		void RollHandler();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void RollHandlerServer();
+
+	UFUNCTION()
+		void RollHandlerClient();
 
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)

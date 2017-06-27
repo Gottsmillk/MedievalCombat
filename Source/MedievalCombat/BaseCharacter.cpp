@@ -169,7 +169,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
-	DOREPLIFETIME(ABaseCharacter, RotateAttack);
 }
 
 // Called when the game starts or when spawned
@@ -184,6 +183,7 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	RollHandler();
 	HitboxHandler();
 	BlockAnimation();
 	BlockHandler();
@@ -234,6 +234,40 @@ void ABaseCharacter::HitboxHandler() {
 			if (InitialHitbox == false) {
 				InitialHitbox = true;
 			}
+		}
+	}
+}
+
+// Handling Roll Movement
+void ABaseCharacter::RollHandler() {
+	if (this->HasAuthority()) {
+		RollHandlerServer();
+	}
+	else {
+		RollHandlerServer();
+		RollHandlerClient();
+	}
+}
+void ABaseCharacter::RollHandlerServer_Implementation() {
+	RollHandlerClient();
+}
+bool ABaseCharacter::RollHandlerServer_Validate() {
+	return true;
+}
+void ABaseCharacter::RollHandlerClient() {
+	if (IsRolling == true) {
+		if (CanMove == true) {
+			CanMove = false;
+		}
+		if (CurrentLRLoc == 0.0f && CurrentFBLoc == 0.0f) {
+			CurrentFBLoc = 1.0f;
+		}
+		this->AddMovementInput(GetActorForwardVector(), CurrentFBLoc * 23, false);
+		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc * 23, false);
+	}
+	else {
+		if (CanMove == false && CanAttack == true) {
+			CanMove = true;
 		}
 	}
 }
@@ -448,14 +482,14 @@ void ABaseCharacter::FillHitboxArray() {
 }
 
 /* Forwards function to server */
-void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed) {
+void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed, bool IsAttack) {
 	if (this->HasAuthority()) {
-		PlayActionAnimServer(Animation, Speed);
+		PlayActionAnimServer(Animation, Speed, IsAttack);
 	}
 }
 
 /* Plays animations from server */
-void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed) {
+void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed, bool IsAttack) {
 	if (this->GetMesh()->GetAnimInstance() != NULL)
 	{
 		this->GetMesh()->GetAnimInstance()->Montage_Play(Animation, Speed);
@@ -479,7 +513,7 @@ bool ABaseCharacter::RelayAnimationServer_Validate(UAnimMontage* Animation, floa
 	return true;
 }
 void ABaseCharacter::RelayAnimationClient(UAnimMontage* Animation, float Speed) {
-	PlayActionAnimServer(Animation, Speed);
+	PlayActionAnimServer(Animation, Speed, false);
 }
 
 /* Resilience drain and regen */
@@ -520,7 +554,7 @@ void ABaseCharacter::FlinchEvent() {
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
-		PlayActionAnim(FlinchAnimMontage, 1.0f);
+		PlayActionAnim(FlinchAnimMontage, 1.0f, false);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, 1.1f, false);
 	}
 }
@@ -537,10 +571,11 @@ void ABaseCharacter::FlinchEvent2() {
 void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true) {
 		CanAttack = false;
+		CanMove = false;
 		//Change sensitivity
 		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
-		PlayActionAnim(Animation, 1.0f);
+		PlayActionAnim(Animation, 1.0f, true);
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
@@ -560,6 +595,7 @@ void ABaseCharacter::AttackHandler3(FString AttackName) {
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
 	CanAttack = true;
+	CanMove = true;
 	//Reset sensitivity
 }
 
@@ -628,7 +664,6 @@ void ABaseCharacter::RollPressedEventClient() {
 	IsBlocking = false;
 	Invincible = true;
 	CanDamage = false;
-	CanMove = false;
 	if (ResilienceRegenTimerHandle.IsValid() == true) {
 		GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 	}
@@ -643,7 +678,6 @@ void ABaseCharacter::RollPressedEventClient2() {
 }
 void ABaseCharacter::RollPressedEventClient3() {
 	Invincible = false;
-	CanMove = false;
 	if (ResilienceRegenTimerHandle.IsValid() == false) {
 		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 	}
