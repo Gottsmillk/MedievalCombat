@@ -19,27 +19,33 @@ ABaseCharacter::ABaseCharacter()
 
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	// Character moves in the direction of input...	
+	GetCharacterMovement()->bOrientRotationToMovement = false; 
 
-	GetCharacterMovement()->bOrientRotationToMovement = false; // Character moves in the direction of input...	
-
-															   // Create a camera boom (pulls in towards the player if there is a collision)
+	 // Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->bUsePawnControlRotation = true;
-	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	// The camera follows at this distance behind the character	
+	CameraBoom->TargetArmLength = 300.0f; 
+	// Rotate the arm based on the controller
+	CameraBoom->bUsePawnControlRotation = true; 
 
-												// Create a follow camera
+	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); 
+	// Camera does not rotate relative to arm
+	FollowCamera->bUsePawnControlRotation = false; 
 
-												   // Create a direction camera
+	// Create a direction camera
 	DirectionCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DirectionCamera"));
-	DirectionCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	DirectionCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	DirectionCamera->SetupAttachment(RootComponent);
+	// Camera does not rotate relative to arm
+	DirectionCamera->bUsePawnControlRotation = false;
 
-													  // Create a capsule component to avoid people going through eachother
+	// Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
 	PlayerCollision->SetVisibility(false);
 	PlayerCollision->InitCapsuleSize(70.0f, 120.0f);
@@ -311,7 +317,7 @@ void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerH
 // Attempt at Roll Direction Handler
 void ABaseCharacter::RollDirectionHandler()
 {
-	if (IsRolling == true && !IsDead)
+	if (IsRolling == true && IsDead == false)
 	{
 		// Left or Right input
 		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
@@ -329,47 +335,47 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
-//Death Handler Multicast
-void ABaseCharacter::DeathAnimation_Implementation()
-{
-	IsDead = true;
-}
-
-//Death Handler Client
-void ABaseCharacter::DeathAnimationForPlayer_Implementation()
-{
-	CanMove = false;
-	IsRolling = true;
-	FlinchTrigger = false;
-	Flinched = false;
-	IsBlocking = false;
-	//FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line, may be unnecessary
-	//GetMesh()->SetOwnerNoSee(true);
-}
 
 // When a character dies
-void ABaseCharacter::ServerDeath()
+void ABaseCharacter::ServerDeath() {
+	if (this->HasAuthority()) {
+		ServerDeathServer();
+	}
+	else {
+		ServerDeathServer();
+		ServerDeathClient();
+	}
+}
+void ABaseCharacter::ServerDeathServer_Implementation() {
+	ServerDeathClient();
+}
+bool ABaseCharacter::ServerDeathServer_Validate() {
+	return true;
+}
+void ABaseCharacter::ServerDeathClient()
 {
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
 	IsDead = true;
+	CurrentFBLoc = 0;
+	CurrentLRLoc = 0;
+	IsRolling = false;
+	CanMove = false;
 	this->SetActorEnableCollision(false);
-	this->StopAnimMontage();
-	DeathAnimationForPlayer();
-	DeathAnimation();
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent_Implementation, 5.0f, false);
+	this->bUseControllerRotationYaw = 0;
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
 }
 
 //False respawn
-void ABaseCharacter::RespawnEvent_Implementation()
+void ABaseCharacter::RespawnEvent()
 {
 	//TODO: Implement death animation stuff
 	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
 	this->SetActorEnableCollision(true);
 	CanMove = true;
-	IsRolling = false;
 	IsDead = false;
 	Health = 100;
+	this->bUseControllerRotationYaw = 1;
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
 	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
@@ -377,11 +383,6 @@ void ABaseCharacter::RespawnEvent_Implementation()
 	this->GetController()->Possess(RespawnedChar);
 	UKismetSystemLibrary::Delay(this, .5, NULL);
 	this->K2_DestroyActor();*/
-}
-
-bool ABaseCharacter::RespawnEvent_Validate()
-{
-	return true;
 }
 
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */

@@ -157,6 +157,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
 		bool IsRolling = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+		float RollSpeed = 2.0f;
+
 	/* ***** Movement Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
@@ -196,19 +199,17 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void HitboxHandler();
 
-	/* Death Handler, Multicasted */
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void DeathAnimation();
-
-	/* Death Handler, Client */
-	UFUNCTION(BlueprintCallable, Client, Reliable)
-		void DeathAnimationForPlayer();
-
 	/* When a character dies, now also including SwordCharacter's overwritten Server Death */
 	UFUNCTION(BlueprintCallable)
 		void ServerDeath();
 
-	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
+		void ServerDeathServer();
+
+	UFUNCTION()
+		void ServerDeathClient();
+
+	UFUNCTION()
 		void RespawnEvent();
 
 	/* On receiving any damage, will decrement health and if below or equal to zero, dies. Overridden function.*/
@@ -218,6 +219,10 @@ public:
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()
 		void WeaponHitEvent(FHitResult HitResult);
+
+	/** Cooldown Decrement */
+	UFUNCTION()
+		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
@@ -255,6 +260,10 @@ public:
 	/** Helper function for Block animation */
 	UFUNCTION()
 		void BlockAnimation();
+
+	/** Roll Direction Handler */
+	UFUNCTION()
+	void RollDirectionHandler();
 
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
