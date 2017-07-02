@@ -281,10 +281,10 @@ void ABaseCharacter::BlockHandler() {
 
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
-	if (IsBlocking == true && BlockingAnim < 1) {
+	if (IsBlocking == true && BlockingAnim < 1 && !IsDead) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
 	}
-	else if (IsBlocking == false && BlockingAnim > 0) {
+	else if (IsBlocking == false && BlockingAnim > 0 && !IsDead) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
 	}
 }
@@ -292,6 +292,41 @@ void ABaseCharacter::BlockAnimation() {
 // Function for handling DELAY equivalent from Blueprints
 void ABaseCharacter::onTimerEnd()
 {
+}
+
+// Decrements cooldown by .1 every time called, if cd > 0
+void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
+{
+	if (cd > 0)
+	{
+		cd -= .1;
+	}
+	else
+	{
+		cd = 0;
+		GetWorld()->GetTimerManager().ClearTimer(Handle);
+	}
+}
+
+// Attempt at Roll Direction Handler
+void ABaseCharacter::RollDirectionHandler()
+{
+	if (IsRolling == true && !IsDead)
+	{
+		// Left or Right input
+		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
+
+		// Forward or Back input
+		if (CurrentFBLoc != 0)
+		{
+			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
+		}
+		else if (CurrentFBLoc == 0 && CurrentLRLoc == 0)
+		{
+			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
+		}
+
+	}
 }
 
 //Death Handler Multicast
@@ -308,8 +343,45 @@ void ABaseCharacter::DeathAnimationForPlayer_Implementation()
 	FlinchTrigger = false;
 	Flinched = false;
 	IsBlocking = false;
-	FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line
-	GetMesh()->SetOwnerNoSee(true);
+	//FollowCamera->SetRelativeLocation(FVector(-117.5f, 0.0f, 72.5f)); //Unsure about this line, may be unnecessary
+	//GetMesh()->SetOwnerNoSee(true);
+}
+
+// When a character dies
+void ABaseCharacter::ServerDeath()
+{
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
+	IsDead = true;
+	this->SetActorEnableCollision(false);
+	this->StopAnimMontage();
+	DeathAnimationForPlayer();
+	DeathAnimation();
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent_Implementation, 5.0f, false);
+}
+
+//False respawn
+void ABaseCharacter::RespawnEvent_Implementation()
+{
+	//TODO: Implement death animation stuff
+	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
+	this->SetActorEnableCollision(true);
+	CanMove = true;
+	IsRolling = false;
+	IsDead = false;
+	Health = 100;
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
+	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
+	RespawnedChar->SpawnDefaultController();
+	this->GetController()->Possess(RespawnedChar);
+	UKismetSystemLibrary::Delay(this, .5, NULL);
+	this->K2_DestroyActor();*/
+}
+
+bool ABaseCharacter::RespawnEvent_Validate()
+{
+	return true;
 }
 
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */
@@ -320,8 +392,10 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 		Health = Health - Damage;
 		if (Health <= 0)
 		{
-			//ServerDeath(); // Seems to be an unimplemented function
+			ServerDeath(); // Untested
 		}
+		if (GEngine)
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
 	}
 }
 
