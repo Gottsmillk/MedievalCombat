@@ -527,8 +527,8 @@ void ABaseCharacter::BleedEvent() {
 	if (!Invincible)
 	{
 		Health = Health - 3;
-		//if (Health <= 0) //There's an error during compiling if an if statement doesn't have anything to execute if conditions are met
-			//this.ServerDeath(); //Currently only implemented in DeathHandler branch with bugs that need fixing
+		if (Health <= 0) 
+			ServerDeath(); 
 	}
 }
 
