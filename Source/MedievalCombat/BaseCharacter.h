@@ -352,6 +352,10 @@ public:
 	UFUNCTION()
 		void FlinchEvent2();
 
+	/* Bleed Event Handler */
+	UFUNCTION()
+		void BleedEvent();
+
 	/* **************************** Button Presses **************************** */
 	/* Block */
 	UFUNCTION()

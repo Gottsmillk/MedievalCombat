@@ -5,6 +5,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "UnrealMathUtility.h"
 
 
 #define COLLISION_ATTACK ECC_GameTraceChannel4
@@ -701,6 +702,16 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 	}
 	else {
 		return false;
+	}
+}
+
+//Bleed Event Handler
+void ABaseCharacter::BleedEvent() {
+	if (!Invincible)
+	{
+		Health = Health - 3;
+		if (Health <= 0) 
+			ServerDeath(); 
 	}
 }
 
