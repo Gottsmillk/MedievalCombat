@@ -287,10 +287,10 @@ void ABaseCharacter::BlockHandler() {
 
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
-	if (IsBlocking == true && BlockingAnim < 1 && !IsDead) {
+	if (IsBlocking == true && BlockingAnim < 1 && IsDead == false) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
 	}
-	else if (IsBlocking == false && BlockingAnim > 0 && !IsDead) {
+	else if (IsBlocking == false && BlockingAnim > 0 && IsDead == false) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
 	}
 }
@@ -339,20 +339,19 @@ void ABaseCharacter::RollDirectionHandler()
 // When a character dies
 void ABaseCharacter::ServerDeath() {
 	if (this->HasAuthority()) {
-		ServerDeathServer();
+		ServerDeathRepAll();
 	}
 	else {
 		ServerDeathServer();
-		ServerDeathClient();
 	}
 }
 void ABaseCharacter::ServerDeathServer_Implementation() {
-	ServerDeathClient();
+	ServerDeathRepAll();
 }
 bool ABaseCharacter::ServerDeathServer_Validate() {
 	return true;
 }
-void ABaseCharacter::ServerDeathClient()
+void ABaseCharacter::ServerDeathRepAll_Implementation()
 {
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
@@ -361,7 +360,8 @@ void ABaseCharacter::ServerDeathClient()
 	CurrentLRLoc = 0;
 	IsRolling = false;
 	CanMove = false;
-	this->SetActorEnableCollision(false);
+	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
+	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
 	this->bUseControllerRotationYaw = 0;
 	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
 }
@@ -371,18 +371,14 @@ void ABaseCharacter::RespawnEvent()
 {
 	//TODO: Implement death animation stuff
 	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
-	this->SetActorEnableCollision(true);
+	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
+	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
 	CanMove = true;
 	IsDead = false;
 	Health = 100;
 	this->bUseControllerRotationYaw = 1;
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
-	/*ABaseCharacter* RespawnedChar = (ABaseCharacter*)GetWorld()->SpawnActor(ABaseCharacter, UKismetMathLibrary::MakeTransform(FVector(0, 0, 450), FRotator(0, 0, 0), FVector(1, 1, 1)));
-	RespawnedChar->SpawnDefaultController();
-	this->GetController()->Possess(RespawnedChar);
-	UKismetSystemLibrary::Delay(this, .5, NULL);
-	this->K2_DestroyActor();*/
 }
 
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */

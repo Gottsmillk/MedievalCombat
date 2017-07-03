@@ -206,8 +206,8 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void ServerDeathServer();
 
-	UFUNCTION()
-		void ServerDeathClient();
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void ServerDeathRepAll();
 
 	UFUNCTION()
 		void RespawnEvent();
