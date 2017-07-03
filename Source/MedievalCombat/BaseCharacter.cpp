@@ -372,7 +372,6 @@ void ABaseCharacter::RollDirectionHandler()
 	}
 }
 
-
 // When a character dies
 void ABaseCharacter::ServerDeath() {
 	if (this->HasAuthority()) {
