@@ -290,6 +290,7 @@ public:
 			UPARAM(ref) float &Cooldown,
 			float CooldownAmt,
 			float CastCooldownAmt,
+			float CastSpeed, 
 			bool IsChainable,
 			UAnimMontage* Animation,
 			float DelayBeforeHitbox,

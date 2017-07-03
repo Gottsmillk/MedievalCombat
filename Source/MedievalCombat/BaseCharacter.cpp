@@ -256,7 +256,7 @@ bool ABaseCharacter::RollHandlerServer_Validate() {
 	return true;
 }
 void ABaseCharacter::RollHandlerClient() {
-	if (IsRolling == true) {
+	if (IsRolling == true && IsDead == false) {
 		if (CanMove == true) {
 			CanMove = false;
 		}
@@ -267,7 +267,7 @@ void ABaseCharacter::RollHandlerClient() {
 		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc * 23, false);
 	}
 	else {
-		if (CanMove == false && CanAttack == true) {
+		if (CanMove == false && CanAttack == true && IsDead == false) {
 			CanMove = true;
 		}
 	}
@@ -426,7 +426,7 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 		Health = Health - Damage;
 		if (Health <= 0)
 		{
-			ServerDeath(); // Untested
+			ServerDeath();
 		}
 		if (GEngine)
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
@@ -445,7 +445,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health -= CurrentDamage;
 				if (AttackedTarget->Health <= 0) {
-					//AttackedTarget->ServerDeath();
+					AttackedTarget->ServerDeath();
 				}
 			}
 			else { // Correctly blocked
@@ -633,14 +633,15 @@ void ABaseCharacter::FlinchEvent2() {
 }
 
 /** Attack Handler */
-void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
+void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true) {
+		CheckMoveDuringAttack();
 		CanAttack = false;
 		CanMove = false;
 		//Change sensitivity
 		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
-		PlayActionAnim(Animation, 1.0f, true);
+		PlayActionAnim(Animation, CastSpeed, true);
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
