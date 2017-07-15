@@ -17,6 +17,9 @@ struct FDirResult {
 		FVector Direction;
 }; */
 
+//This is for UI Health update event
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FUIDelegate, FName, name, float, NewPercentage);
+
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
@@ -75,7 +78,7 @@ public:
 
 	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	
 	/* ***** Component Variables ***** */
 
 	/** Returns CameraBoom subobject */
@@ -83,6 +86,12 @@ public:
 
 	/** Returns FollowCamera subobject */
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	/** UI Delegate */
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "UI")
+		FUIDelegate UIDelegate;
+
+	void UIFunction(FName name, float NewPercentage);
 
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 
@@ -298,7 +307,7 @@ public:
 			float Damage
 		);
 	UFUNCTION()
-		void AttackHandler2(FString AttackName, float LengthOfHitbox);
+		void AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage);
 	UFUNCTION()
 		void AttackHandler3(FString AttackName);
 

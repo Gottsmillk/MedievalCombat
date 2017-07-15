@@ -21,7 +21,7 @@ ABaseCharacter::ABaseCharacter()
 	// Set this character to call Tick() every frame. You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	// Character moves in the direction of input...	
-	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -30,7 +30,7 @@ ABaseCharacter::ABaseCharacter()
 	// The camera follows at this distance behind the character	
 	CameraBoom->TargetArmLength = 300.0f;
 	// Rotate the arm based on the controller
-	CameraBoom->bUsePawnControlRotation = true; 
+	CameraBoom->bUsePawnControlRotation = true;
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -124,7 +124,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox4->bDynamicObstacle = false;
 	Hurtbox4->bGenerateOverlapEvents = false;
 	Hurtbox4->SetupAttachment(WeaponHurtboxBase);
-
+	 
 	// Hurtbox5
 	Hurtbox5 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox5"));
 	Hurtbox5->SetVisibility(false);
@@ -142,6 +142,14 @@ ABaseCharacter::ABaseCharacter()
 	HitboxComponentArray[3] = Hurtbox3;
 	HitboxComponentArray[4] = Hurtbox4;
 	HitboxComponentArray[5] = Hurtbox5;
+
+	UIDelegate.AddDynamic(this, &ABaseCharacter::UIFunction);
+}
+// Function signature
+void ABaseCharacter::UIFunction(FName BarID, float NewPercentage)
+{
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -189,6 +197,9 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockAnimation();
 	BlockHandler();
 	FlinchEventTrigger();
+	if (IsDead == false && this->bUseControllerRotationYaw == 0) {
+		this->bUseControllerRotationYaw = 1;
+	}
 }
 
 // Called to bind functionality to input
@@ -413,7 +424,6 @@ void ABaseCharacter::RespawnEvent()
 	CanMove = true;
 	IsDead = false;
 	Health = 100;
-	this->bUseControllerRotationYaw = 1;
 	if (GEngine)
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
 }
@@ -443,7 +453,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
-				AttackedTarget->Health -= CurrentDamage;
+				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
 				if (AttackedTarget->Health <= 0) {
 					AttackedTarget->ServerDeath();
 				}
@@ -643,14 +653,15 @@ void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldo
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
 		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox);
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox, Damage);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 }
-void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox) {
+void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage) {
 	if (IsRolling == false) {
 		CanDamage = true;
 	}
+	CurrentDamage = Damage;
 	FTimerDelegate TimerDel;
 	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName);
 	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
