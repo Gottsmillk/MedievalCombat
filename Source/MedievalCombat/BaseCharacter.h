@@ -17,9 +17,6 @@ struct FDirResult {
 		FVector Direction;
 }; */
 
-//This is for UI Health update event
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FUIDelegate, FName, name, float, NewPercentage);
-
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
@@ -87,12 +84,6 @@ public:
 	/** Returns FollowCamera subobject */
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	/** UI Delegate */
-	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "UI")
-		FUIDelegate UIDelegate;
-
-	void UIFunction(FName name, float NewPercentage);
-
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
@@ -111,6 +102,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
 		bool InitialHitbox = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
+		bool DamageEffect = false;
 
 	/* ***** Health Variables ***** */
 
@@ -151,6 +145,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		float BlockCooldown = 0.0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool SubResilience = false;
+
 	/* ***** Flinch Variables ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool FlinchTrigger = false;
@@ -168,6 +165,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
 		float RollSpeed = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
+		bool CanRoll = true;
 
 	/* ***** Movement Variables ***** */
 

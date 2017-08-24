@@ -124,7 +124,7 @@ ABaseCharacter::ABaseCharacter()
 	Hurtbox4->bDynamicObstacle = false;
 	Hurtbox4->bGenerateOverlapEvents = false;
 	Hurtbox4->SetupAttachment(WeaponHurtboxBase);
-	 
+
 	// Hurtbox5
 	Hurtbox5 = CreateDefaultSubobject<UBoxComponent>(TEXT("Hurtbox5"));
 	Hurtbox5->SetVisibility(false);
@@ -142,14 +142,6 @@ ABaseCharacter::ABaseCharacter()
 	HitboxComponentArray[3] = Hurtbox3;
 	HitboxComponentArray[4] = Hurtbox4;
 	HitboxComponentArray[5] = Hurtbox5;
-
-	UIDelegate.AddDynamic(this, &ABaseCharacter::UIFunction);
-}
-// Function signature
-void ABaseCharacter::UIFunction(FName BarID, float NewPercentage)
-{
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -178,6 +170,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
+	DOREPLIFETIME(ABaseCharacter, CanRoll);
+	DOREPLIFETIME(ABaseCharacter, SubResilience);
 }
 
 // Called when the game starts or when spawned
@@ -268,6 +262,7 @@ bool ABaseCharacter::RollHandlerServer_Validate() {
 }
 void ABaseCharacter::RollHandlerClient() {
 	if (IsRolling == true && IsDead == false) {
+		StopAnimations();
 		if (CanMove == true) {
 			CanMove = false;
 		}
@@ -278,7 +273,7 @@ void ABaseCharacter::RollHandlerClient() {
 		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc * 23, false);
 	}
 	else {
-		if (CanMove == false && CanAttack == true && IsDead == false) {
+		if (CanMove == false && IsDead == false) {
 			CanMove = true;
 		}
 	}
@@ -288,11 +283,13 @@ void ABaseCharacter::RollHandlerClient() {
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
 		if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
-			if (BlockCooldown == 0.0f) {
-				//StopAnimations();
+			if (BlockCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+				StopAnimations();
 				IsBlocking = true;
-				CanDamage = false;
-				//BlockCooldown = 1;
+				if (SubResilience == false) {
+					Resilience -= 4;
+					SubResilience = true;
+				}
 				if (ResilienceRegenTimerHandle.IsValid() == true) {
 					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 				}
@@ -304,6 +301,7 @@ void ABaseCharacter::BlockHandler() {
 				if (IsBlocking == true) {
 					IsBlocking = false;
 				}
+				SubResilience = false;
 				if (ResilienceRegenTimerHandle.IsValid() == false) {
 					GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
 				}
@@ -316,6 +314,7 @@ void ABaseCharacter::BlockHandler() {
 			if (IsBlocking == true) {
 				IsBlocking = false;
 			}
+			SubResilience = false;
 			if (ResilienceRegenTimerHandle.IsValid() == false) {
 				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
 			}
@@ -325,6 +324,7 @@ void ABaseCharacter::BlockHandler() {
 		}
 	}
 	else {
+		SubResilience = false;
 		if (ResilienceRegenTimerHandle.IsValid() == false) {
 			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
 		}
@@ -337,10 +337,10 @@ void ABaseCharacter::BlockHandler() {
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1 && IsDead == false) {
-		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 10);
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 20);
 	}
 	else if (IsBlocking == false && BlockingAnim > 0 && IsDead == false) {
-		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 10);
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 20);
 	}
 }
 
@@ -454,6 +454,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
+				AttackedTarget->DamageEffect = true;
 				if (AttackedTarget->Health <= 0) {
 					AttackedTarget->ServerDeath();
 				}
@@ -730,8 +731,6 @@ void ABaseCharacter::BleedEvent() {
 /* **************************** Button Presses **************************** */
 /* Block */
 void ABaseCharacter::BlockPressedEventClient() {
-	CanDamage = false;
-	Resilience -= 4;
 	BlockPressed = true;
 	if (LastAttack != "Block") {
 		MakeCurrentActionLastAction("Block");
@@ -740,11 +739,13 @@ void ABaseCharacter::BlockPressedEventClient() {
 void ABaseCharacter::BlockReleasedEventClient() {
 	BlockPressed = false;
 	IsBlocking = false;
+	BlockCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + 1;
 }
 /* Roll */
 void ABaseCharacter::RollPressedEventClient() {
 	Resilience -= 25;
 	IsRolling = true;
+	CanRoll = false;
 	MakeCurrentActionLastAction("Roll");
 	FlinchTrigger = false;
 	Flinched = false;
@@ -757,18 +758,22 @@ void ABaseCharacter::RollPressedEventClient() {
 	if (ResilienceDrainTimerHandle.IsValid() == true) {
 		GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 	}
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.745f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
 }
 void ABaseCharacter::RollPressedEventClient2() {
 	IsRolling = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.2f, false);
 }
 void ABaseCharacter::RollPressedEventClient3() {
 	Invincible = false;
+	CanRoll = true;
 	if (ResilienceRegenTimerHandle.IsValid() == false) {
 		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 	}
 	if (ResilienceDrainTimerHandle.IsValid() == false) {
 		GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
+	}
+	if (CanAttack == false) {
+		CanAttack = true;
 	}
 }
