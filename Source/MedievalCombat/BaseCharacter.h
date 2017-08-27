@@ -274,6 +274,10 @@ public:
 	UFUNCTION()
 		void BlockAnimation();
 
+	/** Resilience drain and regen manager */
+	UFUNCTION()
+		void ResilienceManager();
+
 	/** Roll Direction Handler */
 	UFUNCTION()
 	void RollDirectionHandler();

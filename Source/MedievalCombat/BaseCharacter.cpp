@@ -172,6 +172,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
 	DOREPLIFETIME(ABaseCharacter, CanRoll);
 	DOREPLIFETIME(ABaseCharacter, SubResilience);
+	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
 }
 
 // Called when the game starts or when spawned
@@ -191,6 +192,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockAnimation();
 	BlockHandler();
 	FlinchEventTrigger();
+	ResilienceManager();
 	if (IsDead == false && this->bUseControllerRotationYaw == 0) {
 		this->bUseControllerRotationYaw = 1;
 	}
@@ -279,52 +281,16 @@ void ABaseCharacter::RollHandlerClient() {
 	}
 }
 
-// Handling block toggle
-void ABaseCharacter::BlockHandler() {
-	if (BlockPressed == true) {
-		if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
-			if (BlockCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
-				StopAnimations();
-				IsBlocking = true;
-				if (SubResilience == false) {
-					Resilience -= 4;
-					SubResilience = true;
-				}
-				if (ResilienceRegenTimerHandle.IsValid() == true) {
-					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
-				}
-				if (ResilienceDrainTimerHandle.IsValid() == false) {
-					GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
-				}
-			}
-			else {
-				if (IsBlocking == true) {
-					IsBlocking = false;
-				}
-				SubResilience = false;
-				if (ResilienceRegenTimerHandle.IsValid() == false) {
-					GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-				}
-				if (ResilienceDrainTimerHandle.IsValid() == true) {
-					GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-				}
-			}
+void ABaseCharacter::ResilienceManager() {
+	if (BlockPressed == true && IsBlocking == true) {
+		if (ResilienceRegenTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 		}
-		else {
-			if (IsBlocking == true) {
-				IsBlocking = false;
-			}
-			SubResilience = false;
-			if (ResilienceRegenTimerHandle.IsValid() == false) {
-				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-			}
-			if (ResilienceDrainTimerHandle.IsValid() == true) {
-				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-			}
+		if (ResilienceDrainTimerHandle.IsValid() == false) {
+			GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
 		}
 	}
 	else {
-		SubResilience = false;
 		if (ResilienceRegenTimerHandle.IsValid() == false) {
 			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
 		}
@@ -334,13 +300,47 @@ void ABaseCharacter::BlockHandler() {
 	}
 }
 
+// Handling block toggle
+void ABaseCharacter::BlockHandler() {
+	if (this->HasAuthority()) {
+		if (BlockPressed == true) {
+			if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
+				if (BlockCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+					StopAnimations();
+
+					IsBlocking = true;
+					if (SubResilience == false) {
+						Resilience -= 4;
+						SubResilience = true;
+					}
+				}
+				else {
+					if (IsBlocking == true) {
+						IsBlocking = false;
+					}
+					SubResilience = false;
+				}
+			}
+			else {
+				if (IsBlocking == true) {
+					IsBlocking = false;
+				}
+				SubResilience = false;
+			}
+		}
+		else {
+			SubResilience = false;
+		}
+	}
+}
+
 // Smooths transition to and fro blocking
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1 && IsDead == false) {
-		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 20);
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 30);
 	}
 	else if (IsBlocking == false && BlockingAnim > 0 && IsDead == false) {
-		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 20);
+		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 30);
 	}
 }
 
@@ -762,7 +762,7 @@ void ABaseCharacter::RollPressedEventClient() {
 }
 void ABaseCharacter::RollPressedEventClient2() {
 	IsRolling = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.2f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
 }
 void ABaseCharacter::RollPressedEventClient3() {
 	Invincible = false;
