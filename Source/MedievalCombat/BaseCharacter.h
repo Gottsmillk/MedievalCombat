@@ -206,6 +206,9 @@ public:
 
 	/* ***** Other Variables ***** */
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+		bool MenuUp = false;
+
 	/* **************************** Functions **************************** */
 
 	/** Hitbox Handler */
@@ -330,6 +333,10 @@ public:
 	/** Forces all ongoing montages to stop */
 	UFUNCTION()
 		void StopAnimations();
+
+	/** Forces all ongoing montages to stop */
+	UFUNCTION()
+		void StopAnimations2();
 
 	/** Forces all ongoing montages to stop */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)

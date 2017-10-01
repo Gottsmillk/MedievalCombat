@@ -150,6 +150,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
+	DOREPLIFETIME(ABaseCharacter, MenuUp);
 	DOREPLIFETIME(ABaseCharacter, IsDead);
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
@@ -302,11 +303,11 @@ void ABaseCharacter::ResilienceManager() {
 
 // Handling block toggle
 void ABaseCharacter::BlockHandler() {
-	if (this->HasAuthority()) {
+	//if (this->HasAuthority()) {
 		if (BlockPressed == true) {
-			if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true) {
+			if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true && MenuUp == false) {
 				if (BlockCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
-					StopAnimations();
+					StopAnimations2();
 
 					IsBlocking = true;
 					if (SubResilience == false) {
@@ -331,7 +332,7 @@ void ABaseCharacter::BlockHandler() {
 		else {
 			SubResilience = false;
 		}
-	}
+	//}
 }
 
 // Smooths transition to and fro blocking
@@ -545,6 +546,9 @@ void ABaseCharacter::StopAnimations() {
 void ABaseCharacter::StopAnimationsServer_Implementation() {
 	this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
 }
+void ABaseCharacter::StopAnimations2() {
+	this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
+}
 
 /* Please only put helper functions here (functions called by a main function) */
 void ABaseCharacter::FillHitboxArray() {
@@ -645,7 +649,7 @@ void ABaseCharacter::FlinchEvent2() {
 
 /** Attack Handler */
 void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
-	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true) {
+	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
 		CanMove = false;
@@ -731,9 +735,11 @@ void ABaseCharacter::BleedEvent() {
 /* **************************** Button Presses **************************** */
 /* Block */
 void ABaseCharacter::BlockPressedEventClient() {
-	BlockPressed = true;
-	if (LastAttack != "Block") {
-		MakeCurrentActionLastAction("Block");
+	if (MenuUp == false) {
+		BlockPressed = true;
+		if (LastAttack != "Block") {
+			MakeCurrentActionLastAction("Block");
+		}
 	}
 }
 void ABaseCharacter::BlockReleasedEventClient() {
@@ -743,22 +749,24 @@ void ABaseCharacter::BlockReleasedEventClient() {
 }
 /* Roll */
 void ABaseCharacter::RollPressedEventClient() {
-	Resilience -= 25;
-	IsRolling = true;
-	CanRoll = false;
-	MakeCurrentActionLastAction("Roll");
-	FlinchTrigger = false;
-	Flinched = false;
-	IsBlocking = false;
-	Invincible = true;
-	CanDamage = false;
-	if (ResilienceRegenTimerHandle.IsValid() == true) {
-		GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+	if (MenuUp == false) {
+		Resilience -= 25;
+		IsRolling = true;
+		CanRoll = false;
+		MakeCurrentActionLastAction("Roll");
+		FlinchTrigger = false;
+		Flinched = false;
+		IsBlocking = false;
+		Invincible = true;
+		CanDamage = false;
+		if (ResilienceRegenTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+		}
+		if (ResilienceDrainTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+		}
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
 	}
-	if (ResilienceDrainTimerHandle.IsValid() == true) {
-		GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-	}
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
 }
 void ABaseCharacter::RollPressedEventClient2() {
 	IsRolling = false;
