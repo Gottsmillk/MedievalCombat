@@ -340,7 +340,7 @@ void ABaseCharacter::RollHandlerClient() {
 		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc * 23, false);
 	}
 	else {
-		if (CanMove == false && IsDead == false) {
+		if (CanMove == false && IsDead == false && CanAttack == true) {
 			CanMove = true;
 		}
 	}
@@ -502,8 +502,8 @@ void ABaseCharacter::FlinchEvent() {
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
-		PlayActionAnim(FlinchAnimMontage, 1.0f, false);
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, 1.1f, false);
+		PlayActionAnim(FlinchAnimMontage, 1.1f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .8f, false);
 	}
 }
 void ABaseCharacter::FlinchEvent2() {
@@ -600,9 +600,9 @@ void ABaseCharacter::RespawnEvent()
 /** Attack Handler */
 void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
+		CanMove = false;
 		CheckMoveDuringAttack();
 		CanAttack = false;
-		CanMove = false;
 		//Change sensitivity
 		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
@@ -626,8 +626,10 @@ void ABaseCharacter::AttackHandler3(FString AttackName) {
 	CanDamage = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
+	if (CanAttack == false) {
+		CanMove = true;
+	}
 	CanAttack = true;
-	CanMove = true;
 	//Reset sensitivity
 }
 // Do not move player if within proximity and facing them, move if not
@@ -663,17 +665,17 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 		LastAttack = CurrentAttack;
 	}
 	else {
-		LastAttack == "Missed";
+		LastAttack = "Missed";
 	}
 }
 /** Checks if the current attack should be carried out */
 bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
 	// If you are not in cast cooldown or attack cooldown
-	if (CastCooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+	if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
 		return true;
 	}
 	// If you are still in cast cooldown
-	else if (CastCooldownAmt >= UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsChainable == true) {
+	else if (AttackCastCooldown >= UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsChainable == true) {
 		return true;
 	}
 	else {

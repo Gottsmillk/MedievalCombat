@@ -19,6 +19,12 @@ public:
 	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float SBasicAttackCD = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float HBasicAttackCD = 0.0;
+
 	/** Event when block is pressed */
 	UFUNCTION()
 	void BlockPressedEvent();
@@ -39,6 +45,26 @@ public:
 
 	UFUNCTION(Server, Reliable, WithValidation)
 		void RollPressedEventServer();
+
+	/** Event when SBasicAttack is pressed */
+	UFUNCTION()
+		void SBasicAttackPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void SBasicAttackPressedEventServer();
+
+	UFUNCTION()
+		void SBasicAttackPressedEventClient();
+
+	/** Event when HBasicAttack is pressed */
+	UFUNCTION()
+		void HBasicAttackPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void HBasicAttackPressedEventServer();
+
+	UFUNCTION()
+		void HBasicAttackPressedEventClient();
 
 protected:
 	/** Called when the game starts or when spawned */
