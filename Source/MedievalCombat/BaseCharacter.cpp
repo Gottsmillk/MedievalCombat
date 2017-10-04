@@ -203,7 +203,6 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockHandler();
 	BlockAnimation();
 	FlinchEventTrigger();
-	ResilienceManager();
 	if (IsDead == false && this->bUseControllerRotationYaw == 0) {
 		this->bUseControllerRotationYaw = 1;
 	}
@@ -292,25 +291,6 @@ void ABaseCharacter::RollHandlerClient() {
 	}
 }
 
-void ABaseCharacter::ResilienceManager() {
-	if (BlockPressed == true && IsBlocking == true) {
-		if (ResilienceRegenTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
-		}
-		if (ResilienceDrainTimerHandle.IsValid() == false) {
-			GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
-		}
-	}
-	else {
-		if (ResilienceRegenTimerHandle.IsValid() == false) {
-			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-		}
-		if (ResilienceDrainTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-		}
-	}
-}
-
 /* Block */
 void ABaseCharacter::BlockPressedEventClient() {
 	if (MenuUp == false) {
@@ -328,19 +308,40 @@ void ABaseCharacter::BlockReleasedEventClient() {
 
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
-		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true) { // 
+		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true) {
 			IsBlocking = false;
 			SubResilience = false;
+			if (ResilienceRegenTimerHandle.IsValid() == false) {
+				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+			}
+			if (ResilienceDrainTimerHandle.IsValid() == true) {
+				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+			}
 		}
 		else {
-			if (IsBlocking == false) {
+			if (IsBlocking == false && BlockCooldown <= UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
 				IsBlocking = true;
 				if (SubResilience == false) {
 					Resilience -= 4;
 					SubResilience = true;
 				}
+				if (ResilienceRegenTimerHandle.IsValid() == true) {
+					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+				}
+				if (ResilienceDrainTimerHandle.IsValid() == false) {
+					GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
+				}
 			}
 		}
+	}
+	else if (BlockPressed == false) {
+		if (ResilienceRegenTimerHandle.IsValid() == false) {
+			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+		}
+		if (ResilienceDrainTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+		}
+		SubResilience = false;
 	}
 }
 
