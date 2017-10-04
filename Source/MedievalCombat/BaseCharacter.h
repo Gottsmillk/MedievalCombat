@@ -103,7 +103,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
 		bool InitialHitbox = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
 		bool DamageEffect = false;
 
 	/* ***** Health Variables ***** */

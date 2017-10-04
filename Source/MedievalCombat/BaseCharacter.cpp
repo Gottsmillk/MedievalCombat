@@ -151,6 +151,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 
 	// Replicate to everyone
 	DOREPLIFETIME(ABaseCharacter, IsDead);
+	DOREPLIFETIME(ABaseCharacter, DamageEffect);
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
