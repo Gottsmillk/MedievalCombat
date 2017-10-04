@@ -148,6 +148,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool SubResilience = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
+		bool BlockAnimComplete = false;
+
 	/* ***** Flinch Variables ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool FlinchTrigger = false;
@@ -235,10 +238,6 @@ public:
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()
 		void WeaponHitEvent(FHitResult HitResult);
-
-	/** Cooldown Decrement */
-	UFUNCTION()
-		void CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle);
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
@@ -333,10 +332,6 @@ public:
 	/** Forces all ongoing montages to stop */
 	UFUNCTION()
 		void StopAnimations();
-
-	/** Forces all ongoing montages to stop */
-	UFUNCTION()
-		void StopAnimations2();
 
 	/** Forces all ongoing montages to stop */
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)

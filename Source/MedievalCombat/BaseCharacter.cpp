@@ -150,30 +150,39 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
-	DOREPLIFETIME(ABaseCharacter, MenuUp);
 	DOREPLIFETIME(ABaseCharacter, IsDead);
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
 	DOREPLIFETIME(ABaseCharacter, LastAttack);
-	DOREPLIFETIME(ABaseCharacter, IsBlocking);
+
 	DOREPLIFETIME(ABaseCharacter, BlockPressed);
+	DOREPLIFETIME(ABaseCharacter, IsBlocking);
+	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
 	DOREPLIFETIME(ABaseCharacter, BlockCooldown);
-	DOREPLIFETIME(ABaseCharacter, Flinched);
+	DOREPLIFETIME(ABaseCharacter, BlockAnimComplete);
+	DOREPLIFETIME(ABaseCharacter, SubResilience);
+
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
+	DOREPLIFETIME(ABaseCharacter, Flinched);
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
+
+	DOREPLIFETIME(ABaseCharacter, IsRolling);
+	DOREPLIFETIME(ABaseCharacter, CanRoll);
+
+	DOREPLIFETIME(ABaseCharacter, CanMove);
+	DOREPLIFETIME(ABaseCharacter, CanTurn);
+
+	DOREPLIFETIME(ABaseCharacter, Colliding);
+	DOREPLIFETIME(ABaseCharacter, Overlapping);
+
 	DOREPLIFETIME(ABaseCharacter, Resilience);
 	DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
 	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
-	DOREPLIFETIME(ABaseCharacter, CanMove);
-	DOREPLIFETIME(ABaseCharacter, CanTurn);
-	DOREPLIFETIME(ABaseCharacter, Colliding);
-	DOREPLIFETIME(ABaseCharacter, Overlapping);
-	DOREPLIFETIME(ABaseCharacter, IsRolling);
+
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
-	DOREPLIFETIME(ABaseCharacter, CanRoll);
-	DOREPLIFETIME(ABaseCharacter, SubResilience);
-	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
+
+	DOREPLIFETIME(ABaseCharacter, MenuUp);
 }
 
 // Called when the game starts or when spawned
@@ -190,8 +199,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	RollHandler();
 	HitboxHandler();
-	BlockAnimation();
 	BlockHandler();
+	BlockAnimation();
 	FlinchEventTrigger();
 	ResilienceManager();
 	if (IsDead == false && this->bUseControllerRotationYaw == 0) {
@@ -301,67 +310,53 @@ void ABaseCharacter::ResilienceManager() {
 	}
 }
 
-// Handling block toggle
-void ABaseCharacter::BlockHandler() {
-	//if (this->HasAuthority()) {
-		if (BlockPressed == true) {
-			if (Resilience >= ResilienceDrainAmt && Flinched == false && IsRolling == false && CanAttack == true && MenuUp == false) {
-				if (BlockCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
-					StopAnimations2();
-
-					IsBlocking = true;
-					if (SubResilience == false) {
-						Resilience -= 4;
-						SubResilience = true;
-					}
-				}
-				else {
-					if (IsBlocking == true) {
-						IsBlocking = false;
-					}
-					SubResilience = false;
-				}
-			}
-			else {
-				if (IsBlocking == true) {
-					IsBlocking = false;
-				}
-				SubResilience = false;
-			}
+/* Block */
+void ABaseCharacter::BlockPressedEventClient() {
+	if (MenuUp == false) {
+		BlockPressed = true;
+		if (LastAttack != "Block") {
+			MakeCurrentActionLastAction("Block");
 		}
-		else {
-			SubResilience = false;
-		}
-	//}
+	}
+}
+void ABaseCharacter::BlockReleasedEventClient() {
+	IsBlocking = false;
+	BlockPressed = false;
+	BlockCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + 1;
 }
 
-// Smooths transition to and fro blocking
+void ABaseCharacter::BlockHandler() {
+	if (BlockPressed == true) {
+		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true) { // 
+			IsBlocking = false;
+			SubResilience = false;
+		}
+		else {
+			if (IsBlocking == false) {
+				IsBlocking = true;
+				if (SubResilience == false) {
+					Resilience -= 4;
+					SubResilience = true;
+				}
+			}
+		}
+	}
+}
+
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1 && IsDead == false) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 30);
+		StopAnimations();
 	}
 	else if (IsBlocking == false && BlockingAnim > 0 && IsDead == false) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 30);
 	}
 }
 
+
 // Function for handling DELAY equivalent from Blueprints
 void ABaseCharacter::onTimerEnd()
 {
-}
-
-// Decrements cooldown by .1 every time called, if cd > 0
-void ABaseCharacter::CooldownDecrement(UPARAM(ref) float cd, UPARAM(ref) FTimerHandle& Handle)
-{
-	if (cd > 0)
-	{
-		cd -= .1;
-	}
-	else
-	{
-		cd = 0;
-		GetWorld()->GetTimerManager().ClearTimer(Handle);
-	}
 }
 
 // Attempt at Roll Direction Handler
@@ -381,7 +376,6 @@ void ABaseCharacter::RollDirectionHandler()
 		{
 			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
 		}
-
 	}
 }
 
@@ -496,58 +490,17 @@ void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingC
 	}
 }
 
-// Do not move player if within proximity and facing them, move if not
-void ABaseCharacter::CheckMoveDuringAttack() {
-	if (Overlapping == true) {
-		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
-		RV_TraceParams.bTraceComplex = true;
-		RV_TraceParams.bTraceAsyncScene = true;
-		RV_TraceParams.bReturnPhysicalMaterial = false;
-		RV_TraceParams.bIgnoreBlocks = false;
-
-		//Re-initialize hit info
-		FHitResult Out_Hit(ForceInit);
-
-		//call GetWorld() from within an actor extending class
-		if (GetWorld()->LineTraceSingleByChannel(
-			Out_Hit,
-			DirectionCamera->GetComponentLocation(),
-			(DirectionCamera->GetForwardVector() * 1000) + DirectionCamera->GetComponentLocation(),
-			COLLISION_DIRECTION,
-			RV_TraceParams) == true
-			) {
-			Colliding = true;
-		}
-		else {
-			Colliding = false;
-		}
-	}
-}
-
-/* Moves CurrentAction to LastAction */
-void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
-	if (CurrentAttack == "SideStep" || CurrentAttack == "Roll" || CurrentAttack == "Block" || CurrentAttackHit == true) {
-		LastAttack = CurrentAttack;
-	}
-	else {
-		LastAttack == "Missed";
-	}
-}
-
 void ABaseCharacter::StopAnimations() {
 	if (this->HasAuthority()) {
 		StopAnimationsServer_Implementation();
 	}
 	else {
+		StopAnimationsServer_Implementation();
 		this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
 	}
 }
-
 void ABaseCharacter::StopAnimationsServer_Implementation() {
-	this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
-}
-void ABaseCharacter::StopAnimations2() {
-	this->GetMesh()->GetAnimInstance()->Montage_Stop(0.0f, NULL);
+	this->StopAnimMontage();
 }
 
 /* Please only put helper functions here (functions called by a main function) */
@@ -681,6 +634,44 @@ void ABaseCharacter::AttackHandler3(FString AttackName) {
 	//Reset sensitivity
 }
 
+// Do not move player if within proximity and facing them, move if not
+void ABaseCharacter::CheckMoveDuringAttack() {
+	if (Overlapping == true) {
+		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
+		RV_TraceParams.bTraceComplex = true;
+		RV_TraceParams.bTraceAsyncScene = true;
+		RV_TraceParams.bReturnPhysicalMaterial = false;
+		RV_TraceParams.bIgnoreBlocks = false;
+
+		//Re-initialize hit info
+		FHitResult Out_Hit(ForceInit);
+
+		//call GetWorld() from within an actor extending class
+		if (GetWorld()->LineTraceSingleByChannel(
+			Out_Hit,
+			DirectionCamera->GetComponentLocation(),
+			(DirectionCamera->GetForwardVector() * 1000) + DirectionCamera->GetComponentLocation(),
+			COLLISION_DIRECTION,
+			RV_TraceParams) == true
+			) {
+			Colliding = true;
+		}
+		else {
+			Colliding = false;
+		}
+	}
+}
+
+/* Moves CurrentAction to LastAction */
+void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
+	if (CurrentAttack == "SideStep" || CurrentAttack == "Roll" || CurrentAttack == "Block" || CurrentAttackHit == true) {
+		LastAttack = CurrentAttack;
+	}
+	else {
+		LastAttack == "Missed";
+	}
+}
+
 /** Checks if the current attack should be carried out */
 bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
 	// If you are not in cast cooldown or attack cooldown
@@ -733,20 +724,6 @@ void ABaseCharacter::BleedEvent() {
 }
 
 /* **************************** Button Presses **************************** */
-/* Block */
-void ABaseCharacter::BlockPressedEventClient() {
-	if (MenuUp == false) {
-		BlockPressed = true;
-		if (LastAttack != "Block") {
-			MakeCurrentActionLastAction("Block");
-		}
-	}
-}
-void ABaseCharacter::BlockReleasedEventClient() {
-	BlockPressed = false;
-	IsBlocking = false;
-	BlockCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + 1;
-}
 /* Roll */
 void ABaseCharacter::RollPressedEventClient() {
 	if (MenuUp == false) {
