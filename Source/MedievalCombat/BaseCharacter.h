@@ -148,9 +148,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool SubResilience = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool BlockAnimComplete = false;
-
 	/* ***** Flinch Variables ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool FlinchTrigger = false;
@@ -168,9 +165,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
 		float RollSpeed = 2.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
-		bool CanRoll = true;
 
 	/* ***** Movement Variables ***** */
 
@@ -275,10 +269,6 @@ public:
 	/** Helper function for Block animation */
 	UFUNCTION()
 		void BlockAnimation();
-
-	/** Roll Direction Handler */
-	UFUNCTION()
-	void RollDirectionHandler();
 
 	/** Block Handler */
 	UFUNCTION()

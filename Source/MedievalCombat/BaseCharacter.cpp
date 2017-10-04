@@ -161,7 +161,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
 	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
 	DOREPLIFETIME(ABaseCharacter, BlockCooldown);
-	DOREPLIFETIME(ABaseCharacter, BlockAnimComplete);
 	DOREPLIFETIME(ABaseCharacter, SubResilience);
 
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
@@ -169,7 +168,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
 
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
-	DOREPLIFETIME(ABaseCharacter, CanRoll);
 
 	DOREPLIFETIME(ABaseCharacter, CanMove);
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
@@ -194,37 +192,47 @@ void ABaseCharacter::BeginPlay()
 	GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 }
 
-// Called every frame
+// Tick
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	RollHandler();
-	HitboxHandler();
-	BlockHandler();
-	BlockAnimation();
-	FlinchEventTrigger();
-	if (IsDead == false && this->bUseControllerRotationYaw == 0) {
-		this->bUseControllerRotationYaw = 1;
-	}
+	RollHandler(); // Changes movement based on if player is rolling or not
+	HitboxHandler(); // Activates hitbox when attacking
+	BlockHandler(); // Handles whether player is blocking
+	BlockAnimation(); // Changes animation based on if player is blocking
+	FlinchEventTrigger(); // Applies flinching when player is attacked
 }
 
-// Called to bind functionality to input
+// Input
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
 
-// Handling attack hitbox
+// Delay function
+void ABaseCharacter::onTimerEnd()
+{
+}
+
+/*********************** HITBOX ***********************/
+void ABaseCharacter::FillHitboxArray() {
+	// Store the hurtboxes inside the hitbox component array
+	HitboxArray[0] = WeaponHurtboxBase->GetSocketLocation("");
+	HitboxArray[1] = Hurtbox1->GetSocketLocation("");
+	HitboxArray[2] = Hurtbox2->GetSocketLocation("");
+	HitboxArray[3] = Hurtbox3->GetSocketLocation("");
+	HitboxArray[4] = Hurtbox4->GetSocketLocation("");
+	HitboxArray[5] = Hurtbox5->GetSocketLocation("");
+}
 void ABaseCharacter::HitboxHandler() {
-	if (this->HasAuthority()) {
-		if (CanDamage == true) {
-			if (InitialHitbox == true) {
+	if (this->HasAuthority()) { // Only done on server
+		if (CanDamage == true) { // Only when swinging
+			if (InitialHitbox == true) { // Fills the beginning trace
 				InitialHitbox = false;
 				FillHitboxArray();
 			}
 			const FName TraceTag("MyTraceTag"); // Trace for debug
-
 			GetWorld()->DebugDrawTraceTag = TraceTag; // Trace for debug
 
 			FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
@@ -256,7 +264,54 @@ void ABaseCharacter::HitboxHandler() {
 	}
 }
 
-// Handling Roll Movement
+/*********************** RESILIENCE ***********************/
+void ABaseCharacter::ResilienceRegenTimer() {
+	if (Resilience < 100) { // Regen resilience
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceRegenAmt, 0, 100);
+	}
+}
+void ABaseCharacter::ResilienceDrainTimer() {
+	if (Resilience >= ResilienceDrainAmt) { // Drain resilience
+		Resilience = UKismetMathLibrary::FClamp(Resilience - ResilienceDrainAmt, 0, 100);
+	}
+}
+
+/*********************** ROLL ***********************/
+void ABaseCharacter::RollPressedEventClient() {
+	if (MenuUp == false) {
+		Resilience -= 25;
+		IsRolling = true;
+		MakeCurrentActionLastAction("Roll");
+		FlinchTrigger = false;
+		Flinched = false;
+		IsBlocking = false;
+		Invincible = true;
+		CanDamage = false;
+		if (ResilienceRegenTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+		}
+		if (ResilienceDrainTimerHandle.IsValid() == true) {
+			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+		}
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
+	}
+}
+void ABaseCharacter::RollPressedEventClient2() {
+	IsRolling = false;
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
+}
+void ABaseCharacter::RollPressedEventClient3() {
+	Invincible = false;
+	if (ResilienceRegenTimerHandle.IsValid() == false) {
+		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
+	}
+	if (ResilienceDrainTimerHandle.IsValid() == false) {
+		GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
+	}
+	if (CanAttack == false) {
+		CanAttack = true;
+	}
+}
 void ABaseCharacter::RollHandler() {
 	if (this->HasAuthority()) {
 		RollHandlerServer();
@@ -291,7 +346,7 @@ void ABaseCharacter::RollHandlerClient() {
 	}
 }
 
-/* Block */
+/*********************** BLOCK ***********************/
 void ABaseCharacter::BlockPressedEventClient() {
 	if (MenuUp == false) {
 		BlockPressed = true;
@@ -305,7 +360,6 @@ void ABaseCharacter::BlockReleasedEventClient() {
 	BlockPressed = false;
 	BlockCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + 1;
 }
-
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
 		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true) {
@@ -322,7 +376,7 @@ void ABaseCharacter::BlockHandler() {
 			if (IsBlocking == false && BlockCooldown <= UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
 				IsBlocking = true;
 				if (SubResilience == false) {
-					Resilience -= 4;
+					Resilience -= ResilienceDrainAmt;
 					SubResilience = true;
 				}
 				if (ResilienceRegenTimerHandle.IsValid() == true) {
@@ -344,7 +398,6 @@ void ABaseCharacter::BlockHandler() {
 		SubResilience = false;
 	}
 }
-
 void ABaseCharacter::BlockAnimation() {
 	if (IsBlocking == true && BlockingAnim < 1 && IsDead == false) {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 1, .01, 30);
@@ -354,117 +407,6 @@ void ABaseCharacter::BlockAnimation() {
 		BlockingAnim = FMath::FInterpTo(BlockingAnim, 0, .01, 30);
 	}
 }
-
-
-// Function for handling DELAY equivalent from Blueprints
-void ABaseCharacter::onTimerEnd()
-{
-}
-
-// Attempt at Roll Direction Handler
-void ABaseCharacter::RollDirectionHandler()
-{
-	if (IsRolling == true && IsDead == false)
-	{
-		// Left or Right input
-		AddMovementInput(GetActorRightVector(), (CurrentLRLoc * RollSpeed));
-
-		// Forward or Back input
-		if (CurrentFBLoc != 0)
-		{
-			AddMovementInput(GetActorForwardVector(), (CurrentFBLoc * RollSpeed));
-		}
-		else if (CurrentFBLoc == 0 && CurrentLRLoc == 0)
-		{
-			AddMovementInput(GetActorForwardVector(), (.5 * RollSpeed));
-		}
-	}
-}
-
-// When a character dies
-void ABaseCharacter::ServerDeath() {
-	if (this->HasAuthority()) {
-		ServerDeathRepAll();
-	}
-	else {
-		ServerDeathServer();
-	}
-}
-void ABaseCharacter::ServerDeathServer_Implementation() {
-	ServerDeathRepAll();
-}
-bool ABaseCharacter::ServerDeathServer_Validate() {
-	return true;
-}
-void ABaseCharacter::ServerDeathRepAll_Implementation()
-{
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
-	IsDead = true;
-	CurrentFBLoc = 0;
-	CurrentLRLoc = 0;
-	IsRolling = false;
-	CanMove = false;
-	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
-	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
-	this->bUseControllerRotationYaw = 0;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
-}
-
-//False respawn
-void ABaseCharacter::RespawnEvent()
-{
-	//TODO: Implement death animation stuff
-	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
-	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
-	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
-	CanMove = true;
-	IsDead = false;
-	Health = 100;
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
-}
-
-/* On receiving any damage, will decrement health and if below or equal to zero, dies */
-void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{
-	if (!Invincible)
-	{
-		Health = Health - Damage;
-		if (Health <= 0)
-		{
-			ServerDeath();
-		}
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
-	}
-}
-
-//When a hitbox is triggered and a weapon hit
-void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
-	if (HitResult.GetActor() != this) {
-		CurrentAttackHit = true;
-		CanDamage = false;
-		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
-		if (AttackedTarget->Invincible == false) {
-			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
-				AttackedTarget->IsBlocking = false;
-				AttackedTarget->FlinchTrigger = true;
-				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
-				AttackedTarget->DamageEffect = true;
-				if (AttackedTarget->Health <= 0) {
-					AttackedTarget->ServerDeath();
-				}
-			}
-			else { // Correctly blocked
-				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
-				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
-				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
-			}
-		}
-	}
-}
-
 // Check if player is facing within 90 degrees of the front of an enemy
 bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
 	FVector Rotation1 = UKismetMathLibrary::Conv_RotatorToVector(UKismetMathLibrary::FindLookAtRotation((Attacked->GetActorLocation()), this->GetActorLocation()));
@@ -477,21 +419,18 @@ bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
 	}
 }
 
-// Play when PlayerCollision2 is overlapped
-void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
-	if (OtherActor != this) {
-		Overlapping = true;
+/*********************** ANIMATIONS ***********************/
+void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed, bool IsAttack) {
+	if (this->HasAuthority()) {
+		PlayActionAnimServer(Animation, Speed, IsAttack);
 	}
 }
-
-// Play when PlayerCollision2 is ended overlapped
-void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {
-	if (OtherActor != this) {
-		Overlapping = false;
-		Colliding = false;
+void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed, bool IsAttack) {
+	if (this->GetMesh()->GetAnimInstance() != NULL)
+	{
+		this->GetMesh()->GetAnimInstance()->Montage_Play(Animation, Speed);
 	}
 }
-
 void ABaseCharacter::StopAnimations() {
 	if (this->HasAuthority()) {
 		StopAnimationsServer_Implementation();
@@ -504,33 +443,6 @@ void ABaseCharacter::StopAnimations() {
 void ABaseCharacter::StopAnimationsServer_Implementation() {
 	this->StopAnimMontage();
 }
-
-/* Please only put helper functions here (functions called by a main function) */
-void ABaseCharacter::FillHitboxArray() {
-	// Store the hurtboxes inside the hitbox component array
-	HitboxArray[0] = WeaponHurtboxBase->GetSocketLocation("");
-	HitboxArray[1] = Hurtbox1->GetSocketLocation("");
-	HitboxArray[2] = Hurtbox2->GetSocketLocation("");
-	HitboxArray[3] = Hurtbox3->GetSocketLocation("");
-	HitboxArray[4] = Hurtbox4->GetSocketLocation("");
-	HitboxArray[5] = Hurtbox5->GetSocketLocation("");
-}
-
-/* Forwards function to server */
-void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed, bool IsAttack) {
-	if (this->HasAuthority()) {
-		PlayActionAnimServer(Animation, Speed, IsAttack);
-	}
-}
-
-/* Plays animations from server */
-void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed, bool IsAttack) {
-	if (this->GetMesh()->GetAnimInstance() != NULL)
-	{
-		this->GetMesh()->GetAnimInstance()->Montage_Play(Animation, Speed);
-	}
-}
-
 /* Wrapper for playing animations and displaying for client too */
 void ABaseCharacter::RelayAnimation(UAnimMontage* Animation, float Speed) {
 	if (this->HasAuthority()) {
@@ -550,19 +462,20 @@ bool ABaseCharacter::RelayAnimationServer_Validate(UAnimMontage* Animation, floa
 void ABaseCharacter::RelayAnimationClient(UAnimMontage* Animation, float Speed) {
 	PlayActionAnimServer(Animation, Speed, false);
 }
-
-/* Resilience drain and regen */
-void ABaseCharacter::ResilienceRegenTimer() {
-	if (Resilience < 100) {
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceRegenAmt, 0, 100);
+// Play when PlayerCollision2 is overlapped
+void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
+	if (OtherActor != this) {
+		Overlapping = true;
 	}
 }
-void ABaseCharacter::ResilienceDrainTimer() {
-	if (Resilience >= 4) {
-		Resilience = UKismetMathLibrary::FClamp(Resilience - ResilienceDrainAmt, 0, 100);
+void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {
+	if (OtherActor != this) {
+		Overlapping = false;
+		Colliding = false;
 	}
 }
 
+/*********************** EVENTS UPON TAKING DAMAGE ***********************/
 /* Flinch Handler */
 void ABaseCharacter::FlinchEventTrigger() {
 	if (FlinchTrigger == true) {
@@ -601,7 +514,89 @@ void ABaseCharacter::FlinchEvent2() {
 		Flinched = false;
 	}
 }
+//When a hitbox is triggered and a weapon hit
+void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
+	if (HitResult.GetActor() != this) {
+		CurrentAttackHit = true;
+		CanDamage = false;
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
+		if (AttackedTarget->Invincible == false) {
+			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
+				AttackedTarget->IsBlocking = false;
+				AttackedTarget->FlinchTrigger = true;
+				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
+				AttackedTarget->DamageEffect = true;
+				if (AttackedTarget->Health <= 0) {
+					AttackedTarget->ServerDeath();
+				}
+			}
+			else { // Correctly blocked
+				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
+				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
+				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
+			}
+		}
+	}
+}
+/* On receiving any damage, will decrement health and if below or equal to zero, dies */
+void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (!Invincible)
+	{
+		Health = Health - Damage;
+		if (Health <= 0)
+		{
+			ServerDeath();
+		}
+		if (GEngine)
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
+	}
+}
 
+// When a character dies
+void ABaseCharacter::ServerDeath() {
+	if (this->HasAuthority()) {
+		ServerDeathRepAll();
+	}
+	else {
+		ServerDeathServer();
+	}
+}
+void ABaseCharacter::ServerDeathServer_Implementation() {
+	ServerDeathRepAll();
+}
+bool ABaseCharacter::ServerDeathServer_Validate() {
+	return true;
+}
+void ABaseCharacter::ServerDeathRepAll_Implementation()
+{
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
+	IsDead = true;
+	CurrentFBLoc = 0;
+	CurrentLRLoc = 0;
+	IsRolling = false;
+	CanMove = false;
+	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
+	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
+	this->bUseControllerRotationYaw = 0;
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
+}
+// Respawn
+void ABaseCharacter::RespawnEvent()
+{
+	//TODO: Implement death animation stuff
+	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
+	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
+	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
+	CanMove = true;
+	IsDead = false;
+	Health = 100;
+	if (GEngine)
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
+}
+
+/*********************** ATTACKING ***********************/
 /** Attack Handler */
 void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
@@ -635,7 +630,6 @@ void ABaseCharacter::AttackHandler3(FString AttackName) {
 	CanMove = true;
 	//Reset sensitivity
 }
-
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
 	if (Overlapping == true) {
@@ -663,7 +657,6 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 		}
 	}
 }
-
 /* Moves CurrentAction to LastAction */
 void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 	if (CurrentAttack == "SideStep" || CurrentAttack == "Roll" || CurrentAttack == "Block" || CurrentAttackHit == true) {
@@ -673,7 +666,6 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 		LastAttack == "Missed";
 	}
 }
-
 /** Checks if the current attack should be carried out */
 bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
 	// If you are not in cast cooldown or attack cooldown
@@ -688,7 +680,6 @@ bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FStr
 		return false;
 	}
 }
-
 /** Checks if the current attack should be chainable */
 bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 	if (CurrentAttack == "SBasicAttack") {
@@ -715,52 +706,13 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 	}
 }
 
-//Bleed Event Handler
+/*********************** DAMAGE EFFECTS ***********************/
+/* Bleed Event Handler */
 void ABaseCharacter::BleedEvent() {
 	if (!Invincible)
 	{
 		Health = Health - 3;
 		if (Health <= 0) 
 			ServerDeath(); 
-	}
-}
-
-/* **************************** Button Presses **************************** */
-/* Roll */
-void ABaseCharacter::RollPressedEventClient() {
-	if (MenuUp == false) {
-		Resilience -= 25;
-		IsRolling = true;
-		CanRoll = false;
-		MakeCurrentActionLastAction("Roll");
-		FlinchTrigger = false;
-		Flinched = false;
-		IsBlocking = false;
-		Invincible = true;
-		CanDamage = false;
-		if (ResilienceRegenTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
-		}
-		if (ResilienceDrainTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-		}
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
-	}
-}
-void ABaseCharacter::RollPressedEventClient2() {
-	IsRolling = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
-}
-void ABaseCharacter::RollPressedEventClient3() {
-	Invincible = false;
-	CanRoll = true;
-	if (ResilienceRegenTimerHandle.IsValid() == false) {
-		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
-	}
-	if (ResilienceDrainTimerHandle.IsValid() == false) {
-		GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
-	}
-	if (CanAttack == false) {
-		CanAttack = true;
 	}
 }
