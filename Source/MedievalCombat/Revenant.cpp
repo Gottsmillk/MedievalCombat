@@ -29,6 +29,7 @@ void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	InputComponent->BindAction("Block", IE_Pressed, this, &ARevenant::BlockPressedEvent);
 	InputComponent->BindAction("Block", IE_Released, this, &ARevenant::BlockReleasedEvent);
 	InputComponent->BindAction("Roll", IE_Pressed, this, &ARevenant::RollPressedEvent);
+	InputComponent->BindAction("SideStep", IE_Pressed, this, &ARevenant::SideStepPressedEvent);
 	InputComponent->BindAction("BasicAttack", IE_Pressed, this, &ARevenant::SBasicAttackPressedEvent);
 	InputComponent->BindAction("HardAttack", IE_Pressed, this, &ARevenant::HBasicAttackPressedEvent);
 }
@@ -67,9 +68,28 @@ bool ARevenant::BlockReleasedEventServer_Validate() {
 	return true;
 }
 
+/* SideSteps from pressing key */
+void ARevenant::SideStepPressedEvent() {
+	if (IsRolling == false && IsSideStepping == false && CanAttack == true && SideStepCooldown <= UKismetSystemLibrary::GetGameTimeInSeconds(this) && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		if (this->HasAuthority()) {
+			SideStepPressedEventServer();
+		}
+		else {
+			SideStepPressedEventServer();
+			SideStepPressedEventClient();
+		}
+	}
+}
+void ARevenant::SideStepPressedEventServer_Implementation() {
+	SideStepPressedEventClient();
+}
+bool ARevenant::SideStepPressedEventServer_Validate() {
+	return true;
+}
+
 /* Rolls from pressing key */
 void ARevenant::RollPressedEvent() {
-	if (IsRolling == false && Resilience >= 25 && this->GetMovementComponent()->IsMovingOnGround() == true) {
+	if (IsRolling == false && IsSideStepping == false && Resilience >= 25 && this->GetMovementComponent()->IsMovingOnGround() == true) {
 		if (this->HasAuthority()) {
 			RollPressedEventServer();
 		}

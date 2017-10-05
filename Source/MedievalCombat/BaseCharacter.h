@@ -84,6 +84,9 @@ public:
 	/** Returns FollowCamera subobject */
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		UCharacterMovementComponent* CharMovement;
+
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
@@ -158,13 +161,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool SuperArmor = false;
 
-	/* ***** Roll Variables ***** */
+	/* ***** Roll/Sidestep Variables ***** */
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Roll)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
 		bool IsRolling = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
-		float RollSpeed = 2.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
+		bool IsSideStepping = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
+		float SideStepCooldown = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
+		float SideStepCooldownAmt = 8.0;
 
 	/* ***** Movement Variables ***** */
 
@@ -272,13 +281,13 @@ public:
 
 	/** Block Handler */
 	UFUNCTION()
-		void RollHandler();
+		void MovementHandler();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-		void RollHandlerServer();
+		void MovementHandlerServer();
 
 	UFUNCTION()
-		void RollHandlerClient();
+		void MovementHandlerClient();
 
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
@@ -364,6 +373,13 @@ public:
 		void BlockPressedEventClient();
 	UFUNCTION()
 		void BlockReleasedEventClient();
+	/* SideStep */
+	UFUNCTION()
+		void SideStepPressedEventClient();
+	UFUNCTION()
+		void SideStepPressedEventClient2();
+	UFUNCTION()
+		void SideStepPressedEventClient3();
 	/* Roll */
 	UFUNCTION()
 		void RollPressedEventClient();

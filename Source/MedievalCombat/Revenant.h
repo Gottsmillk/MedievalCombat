@@ -46,6 +46,13 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void RollPressedEventServer();
 
+	/** Event when sidestep is pressed */
+	UFUNCTION()
+		void SideStepPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void SideStepPressedEventServer();
+
 	/** Event when SBasicAttack is pressed */
 	UFUNCTION()
 		void SBasicAttackPressedEvent();

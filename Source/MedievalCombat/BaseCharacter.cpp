@@ -168,6 +168,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
 
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
+	DOREPLIFETIME(ABaseCharacter, IsSideStepping);
 
 	DOREPLIFETIME(ABaseCharacter, CanMove);
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
@@ -196,7 +197,7 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	RollHandler(); // Changes movement based on if player is rolling or not
+	MovementHandler(); // Changes movement based on if player is rolling or not
 	HitboxHandler(); // Activates hitbox when attacking
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
@@ -277,6 +278,34 @@ void ABaseCharacter::ResilienceDrainTimer() {
 }
 
 /*********************** ROLL ***********************/
+void ABaseCharacter::SideStepPressedEventClient() {
+	if (MenuUp == false && Flinched == false && CanAttack == true && IsDead == false) {
+		IsSideStepping = true;
+		CanAttack = false;
+		MakeCurrentActionLastAction("SideStep");
+		IsBlocking = false;
+		Invincible = true;
+		CharMovement->MaxWalkSpeed = 3000;
+		CharMovement->MaxAcceleration = 3500;
+		SideStepCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + SideStepCooldownAmt;
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient2, 0.25f, false);
+	}
+}
+void ABaseCharacter::SideStepPressedEventClient2() {
+	IsSideStepping = false;
+	CharMovement->MaxWalkSpeed = 230;
+	CharMovement->MaxAcceleration = 1500;
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient3, 0.1f, false);
+}
+void ABaseCharacter::SideStepPressedEventClient3() {
+	if (IsRolling == false && IsSideStepping == false) {
+		Invincible = false;
+	}
+	if (CanAttack == false) {
+		CanAttack = true;
+	}
+}
+
 void ABaseCharacter::RollPressedEventClient() {
 	if (MenuUp == false) {
 		Resilience -= 25;
@@ -287,21 +316,27 @@ void ABaseCharacter::RollPressedEventClient() {
 		IsBlocking = false;
 		Invincible = true;
 		CanDamage = false;
+		CharMovement->MaxWalkSpeed = 600;
+		CharMovement->MaxAcceleration = 3500;
 		if (ResilienceRegenTimerHandle.IsValid() == true) {
 			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 		}
 		if (ResilienceDrainTimerHandle.IsValid() == true) {
 			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 		}
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.7f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.5f, false);
 	}
 }
 void ABaseCharacter::RollPressedEventClient2() {
 	IsRolling = false;
+	CharMovement->MaxWalkSpeed = 230;
+	CharMovement->MaxAcceleration = 1500;
 	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
 }
 void ABaseCharacter::RollPressedEventClient3() {
-	Invincible = false;
+	if (IsRolling == false && IsSideStepping == false) {
+		Invincible = false;
+	}
 	if (ResilienceRegenTimerHandle.IsValid() == false) {
 		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
 	}
@@ -312,23 +347,23 @@ void ABaseCharacter::RollPressedEventClient3() {
 		CanAttack = true;
 	}
 }
-void ABaseCharacter::RollHandler() {
+void ABaseCharacter::MovementHandler() {
 	if (this->HasAuthority()) {
-		RollHandlerServer();
+		MovementHandlerServer();
 	}
 	else {
-		RollHandlerServer();
-		RollHandlerClient();
+		MovementHandlerServer();
+		MovementHandlerClient();
 	}
 }
-void ABaseCharacter::RollHandlerServer_Implementation() {
-	RollHandlerClient();
+void ABaseCharacter::MovementHandlerServer_Implementation() {
+	MovementHandlerClient();
 }
-bool ABaseCharacter::RollHandlerServer_Validate() {
+bool ABaseCharacter::MovementHandlerServer_Validate() {
 	return true;
 }
-void ABaseCharacter::RollHandlerClient() {
-	if (IsRolling == true && IsDead == false) {
+void ABaseCharacter::MovementHandlerClient() {
+	if ((IsRolling == true || IsSideStepping == true) && IsDead == false) {
 		StopAnimations();
 		if (CanMove == true) {
 			CanMove = false;
@@ -336,11 +371,14 @@ void ABaseCharacter::RollHandlerClient() {
 		if (CurrentLRLoc == 0.0f && CurrentFBLoc == 0.0f) {
 			CurrentFBLoc = 1.0f;
 		}
-		this->AddMovementInput(GetActorForwardVector(), CurrentFBLoc * 23, false);
-		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc * 23, false);
+		this->AddMovementInput(GetActorForwardVector(), CurrentFBLoc, false);
+		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc, false);
 	}
 	else {
-		if (CanMove == false && IsDead == false && CanAttack == true) {
+		if (Flinched == true) {
+			CanMove = false;
+		}
+		else if (CanMove == false && IsDead == false && CanAttack == true) {
 			CanMove = true;
 		}
 	}
@@ -362,7 +400,7 @@ void ABaseCharacter::BlockReleasedEventClient() {
 }
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
-		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true) {
+		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true || IsSideStepping == true) {
 			IsBlocking = false;
 			SubResilience = false;
 			if (ResilienceRegenTimerHandle.IsValid() == false) {
@@ -498,7 +536,6 @@ void ABaseCharacter::FlinchEvent() {
 	if (Health > 0 && SuperArmor == false) {
 		FlinchTrigger = false;
 		StopAnimations();
-		CanMove = false;
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
@@ -507,12 +544,10 @@ void ABaseCharacter::FlinchEvent() {
 	}
 }
 void ABaseCharacter::FlinchEvent2() {
-	if (IsRolling == false) {
-		CanMove = true;
-	}
 	if (Flinched == true) {
 		Flinched = false;
 	}
+	CanAttack = true;
 }
 //When a hitbox is triggered and a weapon hit
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
@@ -570,13 +605,11 @@ bool ABaseCharacter::ServerDeathServer_Validate() {
 }
 void ABaseCharacter::ServerDeathRepAll_Implementation()
 {
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Died")));
 	IsDead = true;
 	CurrentFBLoc = 0;
 	CurrentLRLoc = 0;
 	IsRolling = false;
-	CanMove = false;
+	IsSideStepping = false;
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
 	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
 	this->bUseControllerRotationYaw = 0;
@@ -589,18 +622,15 @@ void ABaseCharacter::RespawnEvent()
 	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
-	CanMove = true;
-	IsDead = false;
 	Health = 100;
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Actor Respawned")));
+	this->bUseControllerRotationYaw = 1;
+	IsDead = false;
 }
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
 void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
-		CanMove = false;
 		CheckMoveDuringAttack();
 		CanAttack = false;
 		//Change sensitivity
@@ -613,7 +643,7 @@ void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldo
 	}
 }
 void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage) {
-	if (IsRolling == false) {
+	if (IsRolling == false && IsSideStepping == false) {
 		CanDamage = true;
 	}
 	CurrentDamage = Damage;
@@ -626,10 +656,9 @@ void ABaseCharacter::AttackHandler3(FString AttackName) {
 	CanDamage = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
-	if (CanAttack == false) {
-		CanMove = true;
+	if (Flinched == false) {
+		CanAttack = true;
 	}
-	CanAttack = true;
 	//Reset sensitivity
 }
 // Do not move player if within proximity and facing them, move if not
