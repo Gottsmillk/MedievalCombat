@@ -176,9 +176,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
 
-	DOREPLIFETIME(ABaseCharacter, Resilience);
-	DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
-	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
+	//DOREPLIFETIME(ABaseCharacter, Resilience);
+	//DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
+	//DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
 
@@ -202,6 +202,9 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
 	FlinchEventTrigger(); // Applies flinching when player is attacked
+	if (IsDead == true && this->bUseControllerRotationYaw == 0) {
+		this->bUseControllerRotationYaw = 1;
+	}
 }
 
 // Input
@@ -623,7 +626,6 @@ void ABaseCharacter::RespawnEvent()
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
 	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
 	Health = 100;
-	this->bUseControllerRotationYaw = 1;
 	IsDead = false;
 }
 

@@ -197,13 +197,13 @@ public:
 
 	/* ***** Resilience Variables ***** */
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
 		float Resilience = 100.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
 		float ResilienceDrainAmt = 4.0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Resilience)
 		float ResilienceRegenAmt = 4.0;
 
 	/* ***** Cooldown Variables ***** */
