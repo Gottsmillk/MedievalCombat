@@ -176,9 +176,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
 
-	//DOREPLIFETIME(ABaseCharacter, Resilience);
-	//DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
-	//DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
+	DOREPLIFETIME(ABaseCharacter, Resilience);
+	DOREPLIFETIME(ABaseCharacter, ResilienceDrainAmt);
+	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
 
@@ -406,11 +406,13 @@ void ABaseCharacter::BlockHandler() {
 		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true || IsSideStepping == true) {
 			IsBlocking = false;
 			SubResilience = false;
-			if (ResilienceRegenTimerHandle.IsValid() == false) {
-				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-			}
-			if (ResilienceDrainTimerHandle.IsValid() == true) {
-				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+			if (this->HasAuthority()) {
+				if (ResilienceRegenTimerHandle.IsValid() == false) {
+					GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+				}
+				if (ResilienceDrainTimerHandle.IsValid() == true) {
+					GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+				}
 			}
 		}
 		else {
@@ -420,21 +422,25 @@ void ABaseCharacter::BlockHandler() {
 					Resilience -= ResilienceDrainAmt;
 					SubResilience = true;
 				}
-				if (ResilienceRegenTimerHandle.IsValid() == true) {
-					GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
-				}
-				if (ResilienceDrainTimerHandle.IsValid() == false) {
-					GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
+				if (this->HasAuthority()) {
+					if (ResilienceRegenTimerHandle.IsValid() == true) {
+						GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+					}
+					if (ResilienceDrainTimerHandle.IsValid() == false) {
+						GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
+					}
 				}
 			}
 		}
 	}
 	else if (BlockPressed == false) {
-		if (ResilienceRegenTimerHandle.IsValid() == false) {
-			GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-		}
-		if (ResilienceDrainTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+		if (this->HasAuthority()) {
+			if (ResilienceRegenTimerHandle.IsValid() == false) {
+				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+			}
+			if (ResilienceDrainTimerHandle.IsValid() == true) {
+				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+			}
 		}
 		SubResilience = false;
 	}
