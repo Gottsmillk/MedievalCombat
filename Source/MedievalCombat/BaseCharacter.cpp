@@ -190,7 +190,9 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	//Start Regen/Drain handlers
-	GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
+	if (this->HasAuthority()) {
+		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
+	}
 }
 
 // Tick
