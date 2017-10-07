@@ -135,11 +135,11 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			"SBasicAttack", // Name
 			SBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
-			1.5f, // Re-Casting delay
+			1.1f, // Re-Casting delay
 			0.9f, // Speed of Animation
 			false, // Based on previous Attack, is it Chainable
 			SBasicAttackAnimMontage, // Animation to use
-			0.32f, // Delay before Hitbox starts
+			0.3f, // Delay before Hitbox starts
 			0.2f, // Time duration of Hitbox
 			3.0f); // Amount of damage
 	}
@@ -148,7 +148,7 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			"SBasicAttack", // Name
 			SBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
-			1.5f, // Re-Casting delay
+			1.1f, // Re-Casting delay
 			0.9f, // Speed of Animation
 			true, // Based on previous Attack, is it Chainable
 			SBasicAttackComboAnimMontage, // Animation to use
@@ -187,7 +187,7 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			"HBasicAttack", // Name
 			HBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
-			1.5f, // Re-Casting delay
+			1.2f, // Re-Casting delay
 			1.1f, // Speed of Animation
 			false, // Based on previous Attack, is it Chainable
 			HBasicAttackAnimMontage, // Animation to use
@@ -200,7 +200,7 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			"HBasicAttack", // Name
 			HBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
-			1.5f, // Re-Casting delay
+			1.2f, // Re-Casting delay
 			1.1f, // Speed of Animation
 			true, // Based on previous Attack, is it Chainable
 			HBasicAttackComboAnimMontage, // Animation to use

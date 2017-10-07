@@ -291,7 +291,7 @@ void ABaseCharacter::SideStepPressedEventClient() {
 		IsBlocking = false;
 		Invincible = true;
 		CharMovement->MaxWalkSpeed = 3000;
-		CharMovement->MaxAcceleration = 3500;
+		CharMovement->MaxAcceleration = 3750;
 		SideStepCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + SideStepCooldownAmt;
 		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient2, 0.25f, false);
 	}
@@ -321,8 +321,8 @@ void ABaseCharacter::RollPressedEventClient() {
 		IsBlocking = false;
 		Invincible = true;
 		CanDamage = false;
-		CharMovement->MaxWalkSpeed = 600;
-		CharMovement->MaxAcceleration = 3500;
+		CharMovement->MaxWalkSpeed = 900;
+		CharMovement->MaxAcceleration = 3300;
 		if (ResilienceRegenTimerHandle.IsValid() == true) {
 			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 		}
@@ -333,12 +333,12 @@ void ABaseCharacter::RollPressedEventClient() {
 	}
 }
 void ABaseCharacter::RollPressedEventClient2() {
-	IsRolling = false;
 	CharMovement->MaxWalkSpeed = 230;
 	CharMovement->MaxAcceleration = 1500;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.1f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.2f, false);
 }
 void ABaseCharacter::RollPressedEventClient3() {
+	IsRolling = false;
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}

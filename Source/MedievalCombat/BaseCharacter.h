@@ -173,7 +173,7 @@ public:
 		float SideStepCooldown = 0.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
-		float SideStepCooldownAmt = 8.0;
+		float SideStepCooldownAmt = 5.0;
 
 	/* ***** Movement Variables ***** */
 
