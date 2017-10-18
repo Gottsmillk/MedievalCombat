@@ -23,6 +23,16 @@ ARevenant::ARevenant()
 	CounteringBlowHurtbox->bGenerateOverlapEvents = true;
 	CounteringBlowHurtbox->SetupAttachment(GetMesh(), TEXT("Weaponsocket"));
 
+	// Staggering kick hurtbox
+	StaggeringKickHurtbox = CreateDefaultSubobject<UBoxComponent>(TEXT("Staggering Kick Hurtbox"));
+	StaggeringKickHurtbox->SetVisibility(true);
+	StaggeringKickHurtbox->SetHiddenInGame(false);
+	StaggeringKickHurtbox->SetBoxExtent(FVector(50.0f, 50.0f, 50.0f));
+	StaggeringKickHurtbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	StaggeringKickHurtbox->bDynamicObstacle = false;
+	StaggeringKickHurtbox->bGenerateOverlapEvents = true;
+	StaggeringKickHurtbox->SetupAttachment(GetMesh(), TEXT("Kicksocket"));
+
 }
 
 // Called when the game starts or when spawned
@@ -30,6 +40,7 @@ void ARevenant::BeginPlay()
 {
 	Super::BeginPlay();
 	CounteringBlowHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::CounteringBlowHurtboxOverlap);
+	StaggeringKickHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::StaggeringKickHurtboxOverlap);
 }
 
 // Called to bind functionality to input
@@ -44,6 +55,7 @@ void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	InputComponent->BindAction("BasicAttack", IE_Pressed, this, &ARevenant::SBasicAttackPressedEvent);
 	InputComponent->BindAction("HardAttack", IE_Pressed, this, &ARevenant::HBasicAttackPressedEvent);
 	InputComponent->BindAction("CounteringBlow", IE_Pressed, this, &ARevenant::CounteringBlowPressedEvent);
+	InputComponent->BindAction("ComboExtender1", IE_Pressed, this, &ARevenant::StaggeringKickPressedEvent);
 }
 
 /* Hitbox Events */
@@ -52,7 +64,6 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		CurrentAttackHit = true;
-		//LastAttack = "CounteringBlow";
 		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 		if (AttackedTarget->Invincible == false) {
@@ -69,6 +80,24 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
 				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
 				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
+			}
+		}
+	}
+}
+void ARevenant::StaggeringKickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
+	{
+		CurrentAttackHit = true;
+		StaggeringKickHurtbox->bGenerateOverlapEvents = false;
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
+		if (AttackedTarget->Invincible == false) {
+			AttackedTarget->IsBlocking = false;
+			AttackedTarget->FlinchTrigger = true;
+			AttackedTarget->Health = (AttackedTarget->Health) - 1.0f;
+			AttackedTarget->InitiateDamageEffect();
+			if (AttackedTarget->Health <= 0) {
+				AttackedTarget->ServerDeath();
 			}
 		}
 	}
@@ -173,6 +202,7 @@ void ARevenant::SBasicAttackPressedEventClient() {
 	if (CheckChainable("SBasicAttack") == false) { // If no combo
 		AttackHandler(
 			"SBasicAttack", // Name
+			"SBasicAttack", // Type
 			SBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
 			1.1f, // Re-Casting delay
@@ -188,6 +218,7 @@ void ARevenant::SBasicAttackPressedEventClient() {
 	else { // If combo
 		AttackHandler(
 			"SBasicAttack", // Name
+			"SBasicAttack", // Type
 			SBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
 			1.1f, // Re-Casting delay
@@ -229,6 +260,7 @@ void ARevenant::HBasicAttackPressedEventClient() {
 	if (CheckChainable("HBasicAttack") == false) { // If no combo
 		AttackHandler(
 			"HBasicAttack", // Name
+			"HBasicAttack", // Type
 			HBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
 			1.2f, // Re-Casting delay
@@ -244,6 +276,7 @@ void ARevenant::HBasicAttackPressedEventClient() {
 	else { // If combo
 		AttackHandler(
 			"HBasicAttack", // Name
+			"HBasicAttack", // Type
 			HBasicAttackCD, // Cooldown variable
 			1.0f, // Cooldown Amount
 			1.2f, // Re-Casting delay
@@ -282,8 +315,9 @@ void ARevenant::CounteringBlowPressedEventClient() {
 	UAnimMontage *CounteringBlowAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *CounteringBlowAnimPath.ToString()));
 	AttackHandler(
 		"CounteringBlow", // Name
+		"CounteringBlow", // Type
 		CounteringBlowCD, // Cooldown variable
-		6.0f, // Cooldown Amount
+		CounteringBlowCDAmt, // Cooldown Amount
 		0.8f, // Re-Casting delay
 		1.0f, // Speed of Animation
 		false, // Based on previous Attack, is it Chainable
@@ -293,4 +327,41 @@ void ARevenant::CounteringBlowPressedEventClient() {
 		2.0f, // Amount of damage
 		true, // Whether or not to use hitbox instead
 		CounteringBlowHurtbox); // Which hitbox to initiate
+}
+
+/* StaggeringKick */
+void ARevenant::StaggeringKickPressedEvent() {
+	if (CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if (this->HasAuthority()) {
+			StaggeringKickPressedEventServer();
+		}
+		else {
+			StaggeringKickPressedEventServer();
+			StaggeringKickPressedEventClient();
+		}
+	}
+}
+void ARevenant::StaggeringKickPressedEventServer_Implementation() {
+	StaggeringKickPressedEventClient();
+}
+bool ARevenant::StaggeringKickPressedEventServer_Validate() {
+	return true;
+}
+void ARevenant::StaggeringKickPressedEventClient() {
+	FName StaggeringKickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Staggering_Kick_Montage.Staggering_Kick_Montage");
+	UAnimMontage *StaggeringKickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *StaggeringKickAnimPath.ToString()));
+	AttackHandler(
+		"StaggeringKick", // Name
+		"ComboExtender", // Type
+		StaggeringKickCD, // Cooldown variable
+		StaggeringKickCDAmt, // Cooldown Amount
+		1.0f, // Re-Casting delay
+		1.0f, // Speed of Animation
+		CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+		StaggeringKickAnimMontage, // Animation to use
+		0.33f, // Delay before Hitbox starts
+		0.11f, // Time duration of Hitbox
+		1.0f, // Amount of damage
+		true, // Whether or not to use hitbox instead
+		StaggeringKickHurtbox); // Which hitbox to initiate
 }

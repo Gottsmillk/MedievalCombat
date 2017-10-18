@@ -331,6 +331,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void AttackHandler(
 			FString AttackName,
+			FString AttackType, 
 			UPARAM(ref) float &Cooldown,
 			float CooldownAmt,
 			float CastCooldownAmt,
@@ -344,9 +345,9 @@ public:
 			UBoxComponent* Hitbox
 		);
 	UFUNCTION()
-		void AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox);
+		void AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox);
 	UFUNCTION()
-		void AttackHandler3(FString AttackName, bool UseHitbox, UBoxComponent* Hitbox);
+		void AttackHandler3(FString AttackName, FString AttackType, bool UseHitbox, UBoxComponent* Hitbox);
 
 	/** Checks if the current attack should be chainable */
 	UFUNCTION()

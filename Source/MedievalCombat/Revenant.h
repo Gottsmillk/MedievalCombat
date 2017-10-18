@@ -10,11 +10,15 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 
 	/** Shield Mesh object */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UStaticMeshComponent* Shield;
+		class UStaticMeshComponent* Shield;
 
 	/** Hurtbox for countering blow */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* CounteringBlowHurtbox;
+		class UBoxComponent* CounteringBlowHurtbox;
+
+	/** Hurtbox for Staggering Kick */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UBoxComponent* StaggeringKickHurtbox;
 	
 public:
 	// Sets default values for this character's properties
@@ -22,6 +26,17 @@ public:
 
 	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
+		FString ComboExtender1 = "";
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
+		FString ComboExtender2 = "";
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
+		FString ComboExtender3 = "";
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
+		FString ComboFinisher1 = "";
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
+		FString ComboFinisher2 = "";
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
 		float SBasicAttackCD = 0.0;
@@ -35,9 +50,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
 		float CounteringBlowCDAmt = 6.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float StaggeringKickCD = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float StaggeringKickCDAmt = 12.0f;
+
 	/** Hitbox Events */
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION()
 		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+	UFUNCTION()
+		void StaggeringKickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	/** Event when block is pressed */
 	UFUNCTION()
@@ -96,6 +119,16 @@ public:
 
 	UFUNCTION()
 		void CounteringBlowPressedEventClient();
+
+	/** Event when StaggeringKick is pressed */
+	UFUNCTION()
+		void StaggeringKickPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void StaggeringKickPressedEventServer();
+
+	UFUNCTION()
+		void StaggeringKickPressedEventClient();
 
 protected:
 	/** Called when the game starts or when spawned */

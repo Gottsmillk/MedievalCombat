@@ -690,8 +690,8 @@ void ABaseCharacter::RespawnEvent()
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
-void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
-	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
+void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
+	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackType, Cooldown) == true && MenuUp == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
 		//Change sensitivity
@@ -699,11 +699,11 @@ void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldo
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
 		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox, Damage, UseHitbox, Hitbox);
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, LengthOfHitbox, Damage, UseHitbox, Hitbox);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 }
-void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
+void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
 	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (UseHitbox == false) {
 			CanDamage = true;
@@ -714,11 +714,11 @@ void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, fl
 	}
 	CurrentDamage = Damage;
 	FTimerDelegate TimerDel;
-	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, UseHitbox, Hitbox);
+	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, UseHitbox, Hitbox);
 	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
 }
-void ABaseCharacter::AttackHandler3(FString AttackName, bool UseHitbox, UBoxComponent* Hitbox) {
-	MakeCurrentActionLastAction(AttackName);
+void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, bool UseHitbox, UBoxComponent* Hitbox) {
+	MakeCurrentActionLastAction(AttackType);
 	if (UseHitbox == true) {
 		Hitbox->bGenerateOverlapEvents = false;
 	}
@@ -768,8 +768,11 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 }
 /** Checks if the current attack should be carried out */
 bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
+	if (CooldownAmt >= UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+		return false;
+	}
 	// If you are not in cast cooldown or attack cooldown
-	if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+	else if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
 		return true;
 	}
 	// If you are still in cast cooldown
