@@ -5,6 +5,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/KismetMaterialLibrary.h"
 #include "UnrealMathUtility.h"
 
 
@@ -151,7 +152,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 
 	// Replicate to everyone
 	DOREPLIFETIME(ABaseCharacter, IsDead);
-	DOREPLIFETIME(ABaseCharacter, DamageEffect);
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
@@ -183,6 +183,14 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
 
 	DOREPLIFETIME(ABaseCharacter, MenuUp);
+
+	DOREPLIFETIME(ABaseCharacter, CurrentDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, MaxDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, MinDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, DesiredDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, DamageIndicatorSpeed);
+	DOREPLIFETIME(ABaseCharacter, LowHealthIndicatorPower);
+	DOREPLIFETIME(ABaseCharacter, DamageDeltaTime);
 }
 
 // Called when the game starts or when spawned
@@ -199,10 +207,12 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	DamageDeltaTime = DeltaTime;
 	MovementHandler(); // Changes movement based on if player is rolling or not
 	HitboxHandler(); // Activates hitbox when attacking
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
+	DamageIndicatorTick(); // Handles displaying the damage indicator
 	FlinchEventTrigger(); // Applies flinching when player is attacked
 	if (IsDead == true && this->bUseControllerRotationYaw == 0) {
 		this->bUseControllerRotationYaw = 1;
@@ -219,6 +229,48 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 // Delay function
 void ABaseCharacter::onTimerEnd()
 {
+}
+/*********************** DAMAGE INDICATOR ***********************/
+void ABaseCharacter::InitiateDamageEffect() {
+	if (this->HasAuthority()) {
+		InitiateDamageEffectClient();
+	}
+	else {
+		InitiateDamageEffectServer();
+	}
+}
+void ABaseCharacter::InitiateDamageEffectServer_Implementation() {
+	InitiateDamageEffectClient();
+}
+bool ABaseCharacter::InitiateDamageEffectServer_Validate() {
+	return true;
+}
+void ABaseCharacter::InitiateDamageEffectClient_Implementation() {
+	DamageIndicatorSpeed = 15.0f;
+	DesiredDamageIndicator = UKismetMathLibrary::FClamp(CurrentDamageIndicator + 1.0f, 0.0f, MaxDamageIndicator);
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->PlayerCameraManager->PlayCameraShake(PlayerTakeDamageCameraShake, UKismetMathLibrary::RandomFloatInRange(0.01f, 0.5f));
+}
+void ABaseCharacter::DamageIndicatorTick() {
+	if (this->IsLocallyControlled() == true) {
+		float TempVar1 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 50.0f, 1.0f, 0.0f);
+		float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
+		float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
+		FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
+		float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 60.0f, 3.0f, 0.0f);
+		float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
+		LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
+		const FName Power("Power");
+		UMaterialParameterCollection *TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/Blood/DamageIndicatorPower.DamageIndicatorPower"));
+		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Power, LowHealthIndicatorPower);
+		float TempVar6 = FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed);
+		CurrentDamageIndicator = TempVar6;
+		const FName Blood2Power("Blood2Power");
+		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Blood2Power, CurrentDamageIndicator);
+		if (UKismetMathLibrary::NearlyEqual_FloatFloat(CurrentDamageIndicator, FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed), 0.01f) == true) {
+			DesiredDamageIndicator = 0.0f;
+			DamageIndicatorSpeed = 3.0f;
+		}
+	}
 }
 
 /*********************** HITBOX ***********************/
@@ -551,7 +603,7 @@ void ABaseCharacter::FlinchEvent() {
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
 		PlayActionAnim(FlinchAnimMontage, 1.1f, false);
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .8f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .6f, false);
 	}
 }
 void ABaseCharacter::FlinchEvent2() {
@@ -571,7 +623,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 				AttackedTarget->IsBlocking = false;
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
-				AttackedTarget->DamageEffect = true;
+				AttackedTarget->InitiateDamageEffect();
 				if (AttackedTarget->Health <= 0) {
 					AttackedTarget->ServerDeath();
 				}
@@ -590,12 +642,11 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 	if (!Invincible)
 	{
 		Health = Health - Damage;
+		InitiateDamageEffect();
 		if (Health <= 0)
 		{
 			ServerDeath();
 		}
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Damage Taken")));
 	}
 }
 
@@ -639,7 +690,7 @@ void ABaseCharacter::RespawnEvent()
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
-void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage) {
+void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, Cooldown) == true && MenuUp == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
@@ -648,21 +699,29 @@ void ABaseCharacter::AttackHandler(FString AttackName, UPARAM(ref) float &Cooldo
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
 		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox, Damage);
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, LengthOfHitbox, Damage, UseHitbox, Hitbox);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 }
-void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage) {
-	if (IsRolling == false && IsSideStepping == false) {
-		CanDamage = true;
+void ABaseCharacter::AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
+	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if (UseHitbox == false) {
+			CanDamage = true;
+		}
+		else if (UseHitbox == true) {
+			Hitbox->bGenerateOverlapEvents = true;
+		}
 	}
 	CurrentDamage = Damage;
 	FTimerDelegate TimerDel;
-	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName);
+	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, UseHitbox, Hitbox);
 	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
 }
-void ABaseCharacter::AttackHandler3(FString AttackName) {
+void ABaseCharacter::AttackHandler3(FString AttackName, bool UseHitbox, UBoxComponent* Hitbox) {
 	MakeCurrentActionLastAction(AttackName);
+	if (UseHitbox == true) {
+		Hitbox->bGenerateOverlapEvents = false;
+	}
 	CanDamage = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;

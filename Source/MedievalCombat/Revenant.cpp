@@ -12,13 +12,24 @@ ARevenant::ARevenant()
 	Shield->bGenerateOverlapEvents = false;
 	FName ShieldSocket = TEXT("Shieldsocket");
 	Shield->SetupAttachment(GetMesh(), ShieldSocket);
+
+	// Countering blow hurtbox
+	CounteringBlowHurtbox = CreateDefaultSubobject<UBoxComponent>(TEXT("Countering Blow Hurtbox"));
+	CounteringBlowHurtbox->SetVisibility(true);
+	CounteringBlowHurtbox->SetHiddenInGame(false);
+	CounteringBlowHurtbox->SetBoxExtent(FVector(50.0f, 50.0f, 50.0f));
+	CounteringBlowHurtbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CounteringBlowHurtbox->bDynamicObstacle = false;
+	CounteringBlowHurtbox->bGenerateOverlapEvents = true;
+	CounteringBlowHurtbox->SetupAttachment(GetMesh(), TEXT("Weaponsocket"));
+
 }
 
 // Called when the game starts or when spawned
 void ARevenant::BeginPlay()
 {
 	Super::BeginPlay();
-
+	CounteringBlowHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::CounteringBlowHurtboxOverlap);
 }
 
 // Called to bind functionality to input
@@ -32,6 +43,35 @@ void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	InputComponent->BindAction("SideStep", IE_Pressed, this, &ARevenant::SideStepPressedEvent);
 	InputComponent->BindAction("BasicAttack", IE_Pressed, this, &ARevenant::SBasicAttackPressedEvent);
 	InputComponent->BindAction("HardAttack", IE_Pressed, this, &ARevenant::HBasicAttackPressedEvent);
+	InputComponent->BindAction("CounteringBlow", IE_Pressed, this, &ARevenant::CounteringBlowPressedEvent);
+}
+
+/* Hitbox Events */
+void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{ 
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
+	{
+		CurrentAttackHit = true;
+		//LastAttack = "CounteringBlow";
+		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
+		if (AttackedTarget->Invincible == false) {
+			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
+				AttackedTarget->IsBlocking = false;
+				AttackedTarget->FlinchTrigger = true;
+				AttackedTarget->Health = (AttackedTarget->Health) - 2.0f;
+				AttackedTarget->InitiateDamageEffect();
+				if (AttackedTarget->Health <= 0) {
+					AttackedTarget->ServerDeath();
+				}
+			}
+			else { // Correctly blocked
+				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
+				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
+				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
+			}
+		}
+	}
 }
 
 /* Blocks from pressing key */
@@ -108,7 +148,7 @@ bool ARevenant::RollPressedEventServer_Validate() {
 
 /* SBasicAttack */
 void ARevenant::SBasicAttackPressedEvent() {
-	if (CanAttack == true && IsRolling == false && Flinched == false) {
+	if (CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (this->HasAuthority()) {
 			SBasicAttackPressedEventServer();
 		}
@@ -141,7 +181,9 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			SBasicAttackAnimMontage, // Animation to use
 			0.3f, // Delay before Hitbox starts
 			0.2f, // Time duration of Hitbox
-			3.0f); // Amount of damage
+			3.0f, // Amount of damage
+			false, // Whether or not to use hitbox instead
+			NULL); // Which hitbox to initiate
 	}
 	else { // If combo
 		AttackHandler(
@@ -152,15 +194,17 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			0.9f, // Speed of Animation
 			true, // Based on previous Attack, is it Chainable
 			SBasicAttackComboAnimMontage, // Animation to use
-			0.12f, // Delay before Hitbox starts
+			0.3f, // Delay before Hitbox starts
 			0.2f, // Time duration of Hitbox
-			3.0f); // Amount of damage
+			3.0f, // Amount of damage
+			false, // Whether or not to use hitbox instead
+			NULL); // Which hitbox to initiate
 	}
 }
 
 /* HBasicAttack */
 void ARevenant::HBasicAttackPressedEvent() {
-	if (CanAttack == true && IsRolling == false && Flinched == false) {
+	if (CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (this->HasAuthority()) {
 			HBasicAttackPressedEventServer();
 		}
@@ -193,7 +237,9 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			HBasicAttackAnimMontage, // Animation to use
 			0.6f, // Delay before Hitbox starts
 			0.3f, // Time duration of Hitbox
-			6.0f); // Amount of damage
+			6.0f, // Amount of damage
+			false, // Whether or not to use hitbox instead
+			NULL); // Which hitbox to initiate
 	}
 	else { // If combo
 		AttackHandler(
@@ -204,9 +250,47 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			1.1f, // Speed of Animation
 			true, // Based on previous Attack, is it Chainable
 			HBasicAttackComboAnimMontage, // Animation to use
-			0.4f, // Delay before Hitbox starts
+			0.2f, // Delay before Hitbox starts
 			0.3f, // Time duration of Hitbox
-			6.0f); // Amount of damage
+			6.0f, // Amount of damage
+			false, // Whether or not to use hitbox instead
+			NULL); // Which hitbox to initiate
 	}
 
+}
+
+/* CounteringBlow */
+void ARevenant::CounteringBlowPressedEvent() {
+	if (CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if (this->HasAuthority()) {
+			CounteringBlowPressedEventServer();
+		}
+		else {
+			CounteringBlowPressedEventServer();
+			CounteringBlowPressedEventClient();
+		}
+	}
+}
+void ARevenant::CounteringBlowPressedEventServer_Implementation() {
+	CounteringBlowPressedEventClient();
+}
+bool ARevenant::CounteringBlowPressedEventServer_Validate() {
+	return true;
+}
+void ARevenant::CounteringBlowPressedEventClient() {
+	FName CounteringBlowAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Countering_Blow_Montage.Countering_Blow_Montage");
+	UAnimMontage *CounteringBlowAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *CounteringBlowAnimPath.ToString()));
+	AttackHandler(
+		"CounteringBlow", // Name
+		CounteringBlowCD, // Cooldown variable
+		6.0f, // Cooldown Amount
+		0.8f, // Re-Casting delay
+		1.0f, // Speed of Animation
+		false, // Based on previous Attack, is it Chainable
+		CounteringBlowAnimMontage, // Animation to use
+		0.2f, // Delay before Hitbox starts
+		0.2f, // Time duration of Hitbox
+		2.0f, // Amount of damage
+		true, // Whether or not to use hitbox instead
+		CounteringBlowHurtbox); // Which hitbox to initiate
 }

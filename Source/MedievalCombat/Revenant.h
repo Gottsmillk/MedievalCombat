@@ -11,6 +11,10 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 	/** Shield Mesh object */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* Shield;
+
+	/** Hurtbox for countering blow */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	class UBoxComponent* CounteringBlowHurtbox;
 	
 public:
 	// Sets default values for this character's properties
@@ -25,9 +29,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
 		float HBasicAttackCD = 0.0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float CounteringBlowCD = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float CounteringBlowCDAmt = 6.0f;
+
+	/** Hitbox Events */
+	UFUNCTION(BlueprintCallable)
+		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+
 	/** Event when block is pressed */
 	UFUNCTION()
-	void BlockPressedEvent();
+		void BlockPressedEvent();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 		void BlockPressedEventServer();
@@ -72,6 +86,16 @@ public:
 
 	UFUNCTION()
 		void HBasicAttackPressedEventClient();
+
+	/** Event when CounteringBlow is pressed */
+	UFUNCTION()
+		void CounteringBlowPressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void CounteringBlowPressedEventServer();
+
+	UFUNCTION()
+		void CounteringBlowPressedEventClient();
 
 protected:
 	/** Called when the game starts or when spawned */

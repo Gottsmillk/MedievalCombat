@@ -24,46 +24,46 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 
 	/** Camera boom positioning the camera behind the character (SpringArm) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class USpringArmComponent* CameraBoom;
+		class USpringArmComponent* CameraBoom;
 
 	/** Follow camera (FirstPersonCamera) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UCameraComponent* FollowCamera;
+		class UCameraComponent* FollowCamera;
 
 	/** Direction camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UCameraComponent* DirectionCamera;
+		class UCameraComponent* DirectionCamera;
 
 	/** Capsule component for player collision (Player) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UCapsuleComponent* PlayerCollision;
+		class UCapsuleComponent* PlayerCollision;
 	
 	/** Capsule component for player collision (Player) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UCapsuleComponent* PlayerCollision2;
+		class UCapsuleComponent* PlayerCollision2;
 
 	/** Weapon Mesh object (BasicSword) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UStaticMeshComponent* Weapon;
+		class UStaticMeshComponent* Weapon;
 
 	/** Weapon hurtbox base (BasicSwordHurtbox followed by BasicSword1-BasicSword5) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* WeaponHurtboxBase;
+		class UBoxComponent* WeaponHurtboxBase;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* Hurtbox1;
+		class UBoxComponent* Hurtbox1;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* Hurtbox2;
+		class UBoxComponent* Hurtbox2;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* Hurtbox3;
+		class UBoxComponent* Hurtbox3;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* Hurtbox4;
+		class UBoxComponent* Hurtbox4;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	class UBoxComponent* Hurtbox5;
+		class UBoxComponent* Hurtbox5;
 
 public:
 	/** Sets default values for this character's properties */
@@ -87,6 +87,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
 		UCharacterMovementComponent* CharMovement;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CharacterInfo)
+		TSubclassOf <UCameraShake> PlayerTakeDamageCameraShake;
+
 	/* ***** Base Variables ("Vanilla" in blueprints) ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
@@ -105,9 +108,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
 		bool InitialHitbox = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
-		bool DamageEffect = false;
 
 	/* ***** Health Variables ***** */
 
@@ -195,6 +195,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		bool Overlapping = false;
 
+	/* ***** Damage Indicator Variables ***** */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float CurrentDamageIndicator = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float MaxDamageIndicator = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float MinDamageIndicator = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float DesiredDamageIndicator = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float DamageIndicatorSpeed = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float LowHealthIndicatorPower = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
+		float DamageDeltaTime = 0;
+
 	/* ***** Resilience Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
@@ -216,6 +238,18 @@ public:
 		bool MenuUp = false;
 
 	/* **************************** Functions **************************** */
+
+	/** Damage Indicator per Tick Function */
+	UFUNCTION()
+		void DamageIndicatorTick();
+
+	/** Adding Damage Effect */
+	UFUNCTION()
+		void InitiateDamageEffect();
+	UFUNCTION(Server, Reliable, WithValidation)
+		void InitiateDamageEffectServer();
+	UFUNCTION(Client, Reliable)
+		void InitiateDamageEffectClient();
 
 	/** Hitbox Handler */
 	UFUNCTION(BlueprintCallable)
@@ -305,12 +339,14 @@ public:
 			UAnimMontage* Animation,
 			float DelayBeforeHitbox,
 			float LengthOfHitbox,
-			float Damage
+			float Damage,
+			bool UseHitbox, 
+			UBoxComponent* Hitbox
 		);
 	UFUNCTION()
-		void AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage);
+		void AttackHandler2(FString AttackName, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox);
 	UFUNCTION()
-		void AttackHandler3(FString AttackName);
+		void AttackHandler3(FString AttackName, bool UseHitbox, UBoxComponent* Hitbox);
 
 	/** Checks if the current attack should be chainable */
 	UFUNCTION()
