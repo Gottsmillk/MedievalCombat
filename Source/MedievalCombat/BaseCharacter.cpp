@@ -404,6 +404,8 @@ void ABaseCharacter::RollPressedEventClient3() {
 		CanAttack = true;
 	}
 }
+
+/*********************** Movement ***********************/
 void ABaseCharacter::MovementHandler() {
 	if (this->HasAuthority()) {
 		MovementHandlerServer();
@@ -439,6 +441,16 @@ void ABaseCharacter::MovementHandlerClient() {
 			CanMove = true;
 		}
 	}
+}
+void ABaseCharacter::AddSpeedModifier1(float Modifier, float Duration) {
+	//int32 index =
+	SpeedEffectsArray.Add(Modifier);
+	//FTimerDelegate TimerDel;
+	//TimerDel.BindUFunction(this, FName("AddSpeedModifier2"), index);
+	//GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, Duration, false);
+}
+void ABaseCharacter::AddSpeedModifier2(int32 index) {
+	//SpeedEffectsArray.RemoveAt(index);
 }
 
 /*********************** BLOCK ***********************/
@@ -690,7 +702,7 @@ void ABaseCharacter::RespawnEvent()
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
-void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
+void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackType, Cooldown) == true && MenuUp == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
@@ -699,17 +711,20 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARA
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
 		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, LengthOfHitbox, Damage, UseHitbox, Hitbox);
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 }
-void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox) {
+void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (UseHitbox == false) {
 			CanDamage = true;
 		}
 		else if (UseHitbox == true) {
 			Hitbox->bGenerateOverlapEvents = true;
+		}
+		else if (Projectile == true) {
+			ProjectileHandler(AttackName);
 		}
 	}
 	CurrentDamage = Damage;
@@ -729,6 +744,17 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, bool
 		CanAttack = true;
 	}
 	//Reset sensitivity
+}
+/** Function for shooting projectiles */
+void ABaseCharacter::ProjectileHandler(FString AttackName) {
+	if (this->HasAuthority()) {
+		if (AttackName == "Impede") {
+			//FVector Location(0.0f, 0.0f, 0.0f);
+			//FRotator Rotation(0.0f, 0.0f, 0.0f);
+			//FActorSpawnParameters SpawnInfo;
+			//GetWorld()->SpawnActor<AProjectile>(Location, Rotation, SpawnInfo);
+		}
+	}
 }
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {

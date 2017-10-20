@@ -213,7 +213,8 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			0.2f, // Time duration of Hitbox
 			3.0f, // Amount of damage
 			false, // Whether or not to use hitbox instead
-			NULL); // Which hitbox to initiate
+			NULL, // Which hitbox to initiate
+			false); // Use Projectile?
 	}
 	else { // If combo
 		AttackHandler(
@@ -229,7 +230,8 @@ void ARevenant::SBasicAttackPressedEventClient() {
 			0.2f, // Time duration of Hitbox
 			3.0f, // Amount of damage
 			false, // Whether or not to use hitbox instead
-			NULL); // Which hitbox to initiate
+			NULL, // Which hitbox to initiate
+			false); // Use Projectile?
 	}
 }
 
@@ -271,7 +273,8 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			0.3f, // Time duration of Hitbox
 			6.0f, // Amount of damage
 			false, // Whether or not to use hitbox instead
-			NULL); // Which hitbox to initiate
+			NULL, // Which hitbox to initiate
+			false); // Use Projectile?
 	}
 	else { // If combo
 		AttackHandler(
@@ -287,7 +290,8 @@ void ARevenant::HBasicAttackPressedEventClient() {
 			0.3f, // Time duration of Hitbox
 			6.0f, // Amount of damage
 			false, // Whether or not to use hitbox instead
-			NULL); // Which hitbox to initiate
+			NULL, // Which hitbox to initiate
+			false); // Use Projectile?
 	}
 
 }
@@ -326,7 +330,8 @@ void ARevenant::CounteringBlowPressedEventClient() {
 		0.2f, // Time duration of Hitbox
 		2.0f, // Amount of damage
 		true, // Whether or not to use hitbox instead
-		CounteringBlowHurtbox); // Which hitbox to initiate
+		CounteringBlowHurtbox, // Which hitbox to initiate
+		false); // Use Projectile?
 }
 
 /* StaggeringKick */
@@ -363,5 +368,6 @@ void ARevenant::StaggeringKickPressedEventClient() {
 		0.11f, // Time duration of Hitbox
 		1.0f, // Amount of damage
 		true, // Whether or not to use hitbox instead
-		StaggeringKickHurtbox); // Which hitbox to initiate
+		StaggeringKickHurtbox, // Which hitbox to initiate
+		false); // Use Projectile?
 }

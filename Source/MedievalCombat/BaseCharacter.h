@@ -195,6 +195,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		bool Overlapping = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
+		TArray<float> SpeedEffectsArray;
+
 	/* ***** Damage Indicator Variables ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
 		float CurrentDamageIndicator = 0;
@@ -313,7 +316,7 @@ public:
 	UFUNCTION()
 		void BlockAnimation();
 
-	/** Block Handler */
+	/** Movement Handler */
 	UFUNCTION()
 		void MovementHandler();
 
@@ -323,9 +326,19 @@ public:
 	UFUNCTION()
 		void MovementHandlerClient();
 
+	UFUNCTION(BlueprintCallable)
+		void AddSpeedModifier1(float Modifier, float Duration);
+
+	UFUNCTION()
+		void AddSpeedModifier2(int32 index);
+
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
 		void BlockHandler();
+
+	/** Function for shooting projectiles */
+	UFUNCTION()
+		void ProjectileHandler(FString AttackName);
 
 	/** Attack Handler */
 	UFUNCTION(BlueprintCallable)
@@ -342,10 +355,11 @@ public:
 			float LengthOfHitbox,
 			float Damage,
 			bool UseHitbox, 
-			UBoxComponent* Hitbox
+			UBoxComponent* Hitbox,
+			bool Projectile
 		);
 	UFUNCTION()
-		void AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox);
+		void AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
 	UFUNCTION()
 		void AttackHandler3(FString AttackName, FString AttackType, bool UseHitbox, UBoxComponent* Hitbox);
 
