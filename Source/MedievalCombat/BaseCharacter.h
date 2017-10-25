@@ -3,19 +3,20 @@
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "ProjectileBase.h"
 #include "BaseCharacter.generated.h"
 
 /* ***** STRUCTS ***** */
-/* Example of a struct
+/* Example of a struct */
 USTRUCT(BlueprintType)
-struct FDirResult {
+struct FSpeedModifierStruct {
 	GENERATED_USTRUCT_BODY()
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		bool CorrectOrientation;
+		float Modifier;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		FVector Direction;
-}; */
+		float Cooldown;
+}; 
 
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
@@ -33,6 +34,10 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 	/** Direction camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UCameraComponent* DirectionCamera;
+
+	/** Capsule component for player collision (Player) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UCapsuleComponent* PlayerAimCollision;
 
 	/** Capsule component for player collision (Player) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
@@ -134,6 +139,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		FString LastAttack = "";
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		FVector MaxProjectileRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		TSubclassOf<AProjectileBase> BaseProjectile;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		FString CurrentAttackName = "";
+
 	/* ***** Block Handler Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -167,6 +181,9 @@ public:
 		bool IsRolling = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
+		bool RollMovement = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
 		bool IsSideStepping = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
@@ -195,8 +212,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		bool Overlapping = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
-		TArray<float> SpeedEffectsArray;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
+		TArray<FSpeedModifierStruct> SpeedEffectsArray;
 
 	/* ***** Damage Indicator Variables ***** */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
@@ -275,9 +292,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
+	UFUNCTION(BlueprintCallable)
+		void ApplyDamage(float Damage);
+
 	/** Function for when an attack hits (SwordContactEvent) */
 	UFUNCTION()
 		void WeaponHitEvent(FHitResult HitResult);
+
+	/** Function for applying weapon effects */
+	UFUNCTION()
+		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName);
 
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
@@ -327,17 +351,14 @@ public:
 		void MovementHandlerClient();
 
 	UFUNCTION(BlueprintCallable)
-		void AddSpeedModifier1(float Modifier, float Duration);
-
-	UFUNCTION()
-		void AddSpeedModifier2(int32 index);
+		void AddSpeedModifier(float Modifier, float Duration);
 
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
 		void BlockHandler();
 
 	/** Function for shooting projectiles */
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void ProjectileHandler(FString AttackName);
 
 	/** Attack Handler */

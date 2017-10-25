@@ -1,6 +1,7 @@
 
 #include "MedievalCombat.h"
 #include "BaseCharacter.h"
+#include "ProjectileBase.h"
 #include "UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -11,6 +12,7 @@
 
 #define COLLISION_ATTACK ECC_GameTraceChannel4
 #define COLLISION_DIRECTION ECC_GameTraceChannel5
+#define COLLISION_PROJECTILE ECC_GameTraceChannel7
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -46,6 +48,15 @@ ABaseCharacter::ABaseCharacter()
 	DirectionCamera->SetupAttachment(RootComponent);
 	// Camera does not rotate relative to arm
 	DirectionCamera->bUsePawnControlRotation = false;
+
+	// Create a capsule component for testing if player is correctly aimed upon
+	PlayerAimCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerAimCollision"));
+	PlayerAimCollision->SetVisibility(false);
+	PlayerAimCollision->InitCapsuleSize(70.0f, 120.0f);
+	PlayerAimCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	PlayerAimCollision->bDynamicObstacle = true;
+	PlayerAimCollision->bGenerateOverlapEvents = false;
+	PlayerAimCollision->SetupAttachment(RootComponent);
 
 	// Create a capsule component to avoid people going through eachother
 	PlayerCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerCollision"));
@@ -143,6 +154,12 @@ ABaseCharacter::ABaseCharacter()
 	HitboxComponentArray[3] = Hurtbox3;
 	HitboxComponentArray[4] = Hurtbox4;
 	HitboxComponentArray[5] = Hurtbox5;
+
+	// Set Projectile to be spawned
+	static ConstructorHelpers::FObjectFinder<UBlueprint> ItemBlueprint(TEXT("Blueprint'/Game/Classes/Revenant/Blueprints/ProjectileBase.ProjectileBase'"));
+	if (ItemBlueprint.Object) {
+		BaseProjectile = (UClass*)ItemBlueprint.Object->GeneratedClass;
+	}
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -156,6 +173,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
 	DOREPLIFETIME(ABaseCharacter, LastAttack);
+	DOREPLIFETIME(ABaseCharacter, CurrentAttackName);
 
 	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
@@ -168,10 +186,12 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
 
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
+	DOREPLIFETIME(ABaseCharacter, RollMovement);
 	DOREPLIFETIME(ABaseCharacter, IsSideStepping);
 
 	DOREPLIFETIME(ABaseCharacter, CanMove);
 	DOREPLIFETIME(ABaseCharacter, CanTurn);
+	DOREPLIFETIME(ABaseCharacter, SpeedEffectsArray);
 
 	DOREPLIFETIME(ABaseCharacter, Colliding);
 	DOREPLIFETIME(ABaseCharacter, Overlapping);
@@ -342,16 +362,12 @@ void ABaseCharacter::SideStepPressedEventClient() {
 		MakeCurrentActionLastAction("SideStep");
 		IsBlocking = false;
 		Invincible = true;
-		CharMovement->MaxWalkSpeed = 3000;
-		CharMovement->MaxAcceleration = 3750;
 		SideStepCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + SideStepCooldownAmt;
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient2, 0.25f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient2, 0.35f, false);
 	}
 }
 void ABaseCharacter::SideStepPressedEventClient2() {
 	IsSideStepping = false;
-	CharMovement->MaxWalkSpeed = 230;
-	CharMovement->MaxAcceleration = 1500;
 	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient3, 0.1f, false);
 }
 void ABaseCharacter::SideStepPressedEventClient3() {
@@ -367,14 +383,13 @@ void ABaseCharacter::RollPressedEventClient() {
 	if (MenuUp == false) {
 		Resilience -= 25;
 		IsRolling = true;
+		RollMovement = true;
 		MakeCurrentActionLastAction("Roll");
 		FlinchTrigger = false;
 		Flinched = false;
 		IsBlocking = false;
 		Invincible = true;
 		CanDamage = false;
-		CharMovement->MaxWalkSpeed = 900;
-		CharMovement->MaxAcceleration = 3300;
 		if (ResilienceRegenTimerHandle.IsValid() == true) {
 			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
 		}
@@ -385,8 +400,7 @@ void ABaseCharacter::RollPressedEventClient() {
 	}
 }
 void ABaseCharacter::RollPressedEventClient2() {
-	CharMovement->MaxWalkSpeed = 230;
-	CharMovement->MaxAcceleration = 1500;
+	RollMovement = false;
 	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.2f, false);
 }
 void ABaseCharacter::RollPressedEventClient3() {
@@ -422,35 +436,40 @@ bool ABaseCharacter::MovementHandlerServer_Validate() {
 	return true;
 }
 void ABaseCharacter::MovementHandlerClient() {
-	if ((IsRolling == true || IsSideStepping == true) && IsDead == false) {
-		StopAnimations();
-		if (CanMove == true) {
+	if (AttackCastCooldown > UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsRolling == false && IsSideStepping == false){
+		if (this->HasAuthority()) {
 			CanMove = false;
 		}
-		if (CurrentLRLoc == 0.0f && CurrentFBLoc == 0.0f) {
-			CurrentFBLoc = 1.0f;
-		}
-		this->AddMovementInput(GetActorForwardVector(), CurrentFBLoc, false);
-		this->AddMovementInput(GetActorRightVector(), CurrentLRLoc, false);
 	}
 	else {
-		if (Flinched == true) {
-			CanMove = false;
+		if ((IsRolling == true || IsSideStepping == true) && IsDead == false) {
+			StopAnimations();
+			if (CanMove == true) {
+				CanMove = false;
+			}
+			if (CurrentLRLoc == 0.0f && CurrentFBLoc == 0.0f) {
+				CurrentFBLoc = 1.0f;
+			}
+			if (RollMovement == true || IsSideStepping == true) {
+				this->AddMovementInput(GetActorForwardVector(), CurrentFBLoc, false);
+				this->AddMovementInput(GetActorRightVector(), CurrentLRLoc, false);
+			}
 		}
-		else if (CanMove == false && IsDead == false && CanAttack == true) {
-			CanMove = true;
+		else {
+			if (Flinched == true) {
+				CanMove = false;
+			}
+			else if (CanMove == false && IsDead == false && CanAttack == true) {
+				CanMove = true;
+			}
 		}
 	}
 }
-void ABaseCharacter::AddSpeedModifier1(float Modifier, float Duration) {
-	//int32 index =
-	SpeedEffectsArray.Add(Modifier);
-	//FTimerDelegate TimerDel;
-	//TimerDel.BindUFunction(this, FName("AddSpeedModifier2"), index);
-	//GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, Duration, false);
-}
-void ABaseCharacter::AddSpeedModifier2(int32 index) {
-	//SpeedEffectsArray.RemoveAt(index);
+void ABaseCharacter::AddSpeedModifier(float Modifier, float Duration) {
+	FSpeedModifierStruct tempMod;
+	tempMod.Modifier = Modifier;
+	tempMod.Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + Duration;
+	SpeedEffectsArray.Add(tempMod);
 }
 
 /*********************** BLOCK ***********************/
@@ -636,6 +655,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 				AttackedTarget->FlinchTrigger = true;
 				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
 				AttackedTarget->InitiateDamageEffect();
+				AttackEffect(AttackedTarget, CurrentAttackName);
 				if (AttackedTarget->Health <= 0) {
 					AttackedTarget->ServerDeath();
 				}
@@ -648,6 +668,9 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 		}
 	}
 }
+void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
+
+}
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */
 void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
@@ -659,6 +682,13 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 		{
 			ServerDeath();
 		}
+	}
+}
+void ABaseCharacter::ApplyDamage(float Damage) {
+	Health -= Damage;
+	InitiateDamageEffect();
+	if (Health <= 0) {
+		ServerDeath();
 	}
 }
 
@@ -706,7 +736,7 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARA
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackType, Cooldown) == true && MenuUp == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
-		//Change sensitivity
+		CurrentAttackName = AttackName;
 		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
 		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
@@ -717,14 +747,16 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARA
 }
 void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
-		if (UseHitbox == false) {
+		if (UseHitbox == false && Projectile == false) {
 			CanDamage = true;
 		}
 		else if (UseHitbox == true) {
 			Hitbox->bGenerateOverlapEvents = true;
 		}
 		else if (Projectile == true) {
-			ProjectileHandler(AttackName);
+			if (this->HasAuthority()) {
+				ProjectileHandler(AttackName);
+			}
 		}
 	}
 	CurrentDamage = Damage;
@@ -748,17 +780,43 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, bool
 /** Function for shooting projectiles */
 void ABaseCharacter::ProjectileHandler(FString AttackName) {
 	if (this->HasAuthority()) {
-		if (AttackName == "Impede") {
-			//FVector Location(0.0f, 0.0f, 0.0f);
-			//FRotator Rotation(0.0f, 0.0f, 0.0f);
-			//FActorSpawnParameters SpawnInfo;
-			//GetWorld()->SpawnActor<AProjectile>(Location, Rotation, SpawnInfo);
+		MaxProjectileRange = FollowCamera->K2_GetComponentLocation() + (FollowCamera->GetForwardVector() * 10000.0f);
+		FVector TempProjectileStartLoc = FollowCamera->K2_GetComponentLocation();
+		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
+		RV_TraceParams.bTraceComplex = true;
+		RV_TraceParams.bTraceAsyncScene = true;
+		RV_TraceParams.bReturnPhysicalMaterial = false;
+		RV_TraceParams.bIgnoreBlocks = false;
+		//Re-initialize hit info
+		FHitResult Out_Hit(ForceInit);
+		//call GetWorld() from within an actor extending class
+		if (GetWorld()->LineTraceSingleByChannel(
+			Out_Hit,
+			FollowCamera->K2_GetComponentLocation() + (FollowCamera->GetForwardVector() * 250.0f),
+			FollowCamera->K2_GetComponentLocation() + (FollowCamera->GetForwardVector() * 10000.0f),
+			COLLISION_PROJECTILE,
+			RV_TraceParams) == true
+			) {
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.Instigator = this;
+			AProjectileBase * ProjectileLaunched = (GetWorld()->SpawnActor<AProjectileBase>(BaseProjectile, GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket"))), UKismetMathLibrary::MakeRotFromX(Out_Hit.ImpactPoint - GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket")))), SpawnParameters));
+			ProjectileLaunched->ProjectileName = AttackName;
+			ProjectileLaunched->ProjectileStartLoc = TempProjectileStartLoc;
+		}
+		else {
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.Instigator = this;
+			AProjectileBase * ProjectileLaunched = (GetWorld()->SpawnActor<AProjectileBase>(BaseProjectile, GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket"))), UKismetMathLibrary::MakeRotFromX(MaxProjectileRange - GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket")))), SpawnParameters));
+			ProjectileLaunched->ProjectileName = AttackName;
+			ProjectileLaunched->ProjectileStartLoc = TempProjectileStartLoc;
 		}
 	}
 }
+
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
 	if (Overlapping == true) {
+
 		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
 		RV_TraceParams.bTraceComplex = true;
 		RV_TraceParams.bTraceAsyncScene = true;
@@ -771,8 +829,8 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 		//call GetWorld() from within an actor extending class
 		if (GetWorld()->LineTraceSingleByChannel(
 			Out_Hit,
-			DirectionCamera->GetComponentLocation(),
-			(DirectionCamera->GetForwardVector() * 1000) + DirectionCamera->GetComponentLocation(),
+			(FollowCamera->GetForwardVector() * 250) + FollowCamera->GetComponentLocation(),
+			(FollowCamera->GetForwardVector() * 1000) + FollowCamera->GetComponentLocation(),
 			COLLISION_DIRECTION,
 			RV_TraceParams) == true
 			) {
@@ -811,6 +869,9 @@ bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FStr
 }
 /** Checks if the current attack should be chainable */
 bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
+	if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+		return false;
+	}
 	if (CurrentAttack == "SBasicAttack") {
 		if (LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
 			return true;

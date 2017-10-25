@@ -56,6 +56,7 @@ void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	InputComponent->BindAction("HardAttack", IE_Pressed, this, &ARevenant::HBasicAttackPressedEvent);
 	InputComponent->BindAction("CounteringBlow", IE_Pressed, this, &ARevenant::CounteringBlowPressedEvent);
 	InputComponent->BindAction("ComboExtender1", IE_Pressed, this, &ARevenant::StaggeringKickPressedEvent);
+	InputComponent->BindAction("ComboExtender2", IE_Pressed, this, &ARevenant::ImpedePressedEvent);
 }
 
 /* Hitbox Events */
@@ -100,6 +101,12 @@ void ARevenant::StaggeringKickHurtboxOverlap(class UPrimitiveComponent* Overlapp
 				AttackedTarget->ServerDeath();
 			}
 		}
+	}
+}
+
+/** Overriding Attack Effect Handler */
+void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
+	if () {
 	}
 }
 
@@ -370,4 +377,42 @@ void ARevenant::StaggeringKickPressedEventClient() {
 		true, // Whether or not to use hitbox instead
 		StaggeringKickHurtbox, // Which hitbox to initiate
 		false); // Use Projectile?
+}
+
+/* Impede */
+void ARevenant::ImpedePressedEvent() {
+	if (CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if (this->HasAuthority()) {
+			ImpedePressedEventServer();
+		}
+		else {
+			ImpedePressedEventServer();
+			ImpedePressedEventClient();
+		}
+	}
+}
+void ARevenant::ImpedePressedEventServer_Implementation() {
+	ImpedePressedEventClient();
+}
+bool ARevenant::ImpedePressedEventServer_Validate() {
+	return true;
+}
+void ARevenant::ImpedePressedEventClient() {
+	FName ImpedeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Impede_Montage.Impede_Montage");
+	UAnimMontage *ImpedeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ImpedeAnimPath.ToString()));
+	AttackHandler(
+		"Impede", // Name
+		"ComboExtender", // Type
+		ImpedeCD, // Cooldown variable
+		ImpedeCDAmt, // Cooldown Amount
+		0.7f, // Re-Casting delay
+		1.0f, // Speed of Animation
+		CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+		ImpedeAnimMontage, // Animation to use
+		0.2f, // Delay before Hitbox starts
+		0.1f, // Time duration of Hitbox
+		1.0f, // Amount of damage
+		false, // Whether or not to use hitbox instead
+		NULL, // Which hitbox to initiate
+		true); // Use Projectile?
 }

@@ -56,11 +56,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
 		float StaggeringKickCDAmt = 12.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float ImpedeCD = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
+		float ImpedeCDAmt = 11.0f;
+
 	/** Hitbox Events */
 	UFUNCTION()
 		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void StaggeringKickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+
+	/** Overriding Attack Effect Handler */
+	UFUNCTION()
+		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName) override;
 
 	/** Event when block is pressed */
 	UFUNCTION()
@@ -129,6 +139,16 @@ public:
 
 	UFUNCTION()
 		void StaggeringKickPressedEventClient();
+
+	/** Event when Impede is pressed */
+	UFUNCTION()
+		void ImpedePressedEvent();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void ImpedePressedEventServer();
+
+	UFUNCTION()
+		void ImpedePressedEventClient();
 
 protected:
 	/** Called when the game starts or when spawned */
