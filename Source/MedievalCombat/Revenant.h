@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseCharacter.h"
+#include "WidgetComponent.h"
 #include "Revenant.generated.h"
 
 UCLASS()
@@ -18,139 +19,81 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 
 	/** Hurtbox for Staggering Kick */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* StaggeringKickHurtbox;
+		class UBoxComponent* KickHurtbox;
 	
 public:
 	// Sets default values for this character's properties
 	ARevenant();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool AgilityEffect = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UWidgetComponent * HPOverhead;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Default)
+		TSubclassOf<ABaseCharacter> Shadow;
+
 	/** Called to bind functionality to input */
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+		virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
-		FString ComboExtender1 = "";
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
-		FString ComboExtender2 = "";
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
-		FString ComboExtender3 = "";
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
-		FString ComboFinisher1 = "";
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attacks)
-		FString ComboFinisher2 = "";
+	/** Add Remaining Inputs */
+	UFUNCTION(BlueprintCallable)
+		virtual void AddRemainingInputs() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float SBasicAttackCD = 0.0;
+	UFUNCTION(Server, Reliable, WithValidation)
+		void AddRemainingInputsServer();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float HBasicAttackCD = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float CounteringBlowCD = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float CounteringBlowCDAmt = 6.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float StaggeringKickCD = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float StaggeringKickCDAmt = 12.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float ImpedeCD = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackCooldowns)
-		float ImpedeCDAmt = 11.0f;
+	UFUNCTION()
+		void AddRemainingInputsClient();
 
 	/** Hitbox Events */
 	UFUNCTION()
 		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
-		void StaggeringKickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+		void KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	/** Overriding Attack Effect Handler */
 	UFUNCTION()
 		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName) override;
 
-	/** Event when block is pressed */
-	UFUNCTION()
-		void BlockPressedEvent();
+	/** Overriding Attack Execute */
+	UFUNCTION(BlueprintCallable)
+		virtual void AttackExecute(FString AttackName) override;
 
 	UFUNCTION(Server, Reliable, WithValidation)
-		void BlockPressedEventServer();
+		virtual void AttackExecuteServer(const FString &AttackName) override;
 
-	/** Event when block is released */
 	UFUNCTION()
-		void BlockReleasedEvent();
+		virtual void AttackExecuteClient(FString AttackName) override;
+
+	/** Function for detecting abilities */
+	UFUNCTION()
+		virtual void DetectAction() override;
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void TurnInvisibleRepAll();
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+		void DetectRepAll();
+
+	/** Add Attacks */
+
+	UFUNCTION(BlueprintCallable)
+		void AddAttack(FString Type, FString AttackName, bool Toggled);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-		void BlockReleasedEventServer();
-
-	/** Event when roll is pressed */
-	UFUNCTION()
-		void RollPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void RollPressedEventServer();
-
-	/** Event when sidestep is pressed */
-	UFUNCTION()
-		void SideStepPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void SideStepPressedEventServer();
-
-	/** Event when SBasicAttack is pressed */
-	UFUNCTION()
-		void SBasicAttackPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void SBasicAttackPressedEventServer();
+		void AddAttackServer(const FString &Type, const FString &AttackName, bool Toggled);
 
 	UFUNCTION()
-		void SBasicAttackPressedEventClient();
+		void AddAttackClient(FString Type, FString AttackName, bool Toggled);
 
-	/** Event when HBasicAttack is pressed */
-	UFUNCTION()
-		void HBasicAttackPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void HBasicAttackPressedEventServer();
-
-	UFUNCTION()
-		void HBasicAttackPressedEventClient();
-
-	/** Event when CounteringBlow is pressed */
-	UFUNCTION()
-		void CounteringBlowPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void CounteringBlowPressedEventServer();
-
-	UFUNCTION()
-		void CounteringBlowPressedEventClient();
-
-	/** Event when StaggeringKick is pressed */
-	UFUNCTION()
-		void StaggeringKickPressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void StaggeringKickPressedEventServer();
-
-	UFUNCTION()
-		void StaggeringKickPressedEventClient();
-
-	/** Event when Impede is pressed */
-	UFUNCTION()
-		void ImpedePressedEvent();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void ImpedePressedEventServer();
-
-	UFUNCTION()
-		void ImpedePressedEventClient();
+	UFUNCTION(BlueprintCallable)
+		float SetAttackCooldownAmt(FString AttackName);
 
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
+
+	FTimerHandle delay2TimerHandle;
 };

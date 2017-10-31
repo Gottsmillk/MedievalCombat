@@ -11,12 +11,93 @@
 USTRUCT(BlueprintType)
 struct FSpeedModifierStruct {
 	GENERATED_USTRUCT_BODY()
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		float Modifier;
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Modifier;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		float Cooldown;
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Cooldown;
+
+		FSpeedModifierStruct(float Modifier2 = 0.0f, float SpeedCooldown2 = 0.0f) {
+			Modifier = Modifier2;
+			Cooldown = SpeedCooldown2;
+		}
 }; 
+
+USTRUCT(BlueprintType)
+struct FAttackModifierStruct {
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Modifier;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Cooldown;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			int NumHits;
+};
+
+USTRUCT(BlueprintType)
+struct FDefenseModifierStruct {
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Modifier;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Cooldown;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			int NumHits;
+};
+
+USTRUCT(BlueprintType)
+struct FCooldownEffectsStruct {
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Modifier;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			FString AbilityName;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Duration;
+};
+
+USTRUCT(BlueprintType)
+struct FDamageTableStruct {
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			FString Attack;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Damage;
+
+		FDamageTableStruct(FString Attack2 = "", float Damage2 = 0.0f) {
+			Attack = Attack2;
+			Damage = Damage2;
+		}
+};
+
+USTRUCT(BlueprintType)
+struct FAttackStruct {
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			FString AttackName;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Cooldown;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float CooldownAmt;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+			float Damage;
+
+		FAttackStruct(FString AttackName2 = "", float Cooldown2 = 0.0f, float CooldownAmt2 = 0.0f) {
+			AttackName = AttackName2;
+			Cooldown = Cooldown2;
+			CooldownAmt = CooldownAmt2;
+		}
+};
 
 UCLASS(config = Game)
 class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
@@ -81,6 +162,10 @@ public:
 	/** Called to bind functionality to input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
+	/** Add Remaining Inputs */
+	UFUNCTION(BlueprintCallable)
+		virtual void AddRemainingInputs();
+
 	/* ***** Component Variables ***** */
 
 	/** Returns CameraBoom subobject */
@@ -102,6 +187,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
 		bool IsDead = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		float CurrentGameTime = 0.0f;
 
 	/* ***** Hitbox Variables ***** */
 
@@ -148,6 +236,30 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		FString CurrentAttackName = "";
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
+		TArray<FAttackModifierStruct> AttackModifierArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
+		TArray<FDefenseModifierStruct> DefenseModifierArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<FAttackStruct> AttackArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<FString> ComboExtenderArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<FString> UtilityArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<FString> ComboFinisherArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<FDamageTableStruct> DamageTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool DetectMode = false;
+
 	/* ***** Block Handler Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -158,9 +270,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		float BlockingAnim = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		float BlockCooldown = 0.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		bool SubResilience = false;
@@ -185,12 +294,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
 		bool IsSideStepping = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
-		float SideStepCooldown = 0.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = RollSidestep)
-		float SideStepCooldownAmt = 5.0;
 
 	/* ***** Movement Variables ***** */
 
@@ -249,15 +352,21 @@ public:
 		float ResilienceRegenAmt = 4.0;
 
 	/* ***** Cooldown Variables ***** */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
 		float AttackCastCooldown = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
+		TArray<FCooldownEffectsStruct> CooldownEffectsArray;
 
 	/* ***** Other Variables ***** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		bool MenuUp = false;
+		bool MenuUp = true;
 
 	/* **************************** Functions **************************** */
+	/** Make weapon visible */
+	UFUNCTION()
+		void WeaponVisibility(bool set);
 
 	/** Damage Indicator per Tick Function */
 	UFUNCTION()
@@ -303,6 +412,20 @@ public:
 	UFUNCTION()
 		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName);
 
+	/** Function for choosing attack */
+	UFUNCTION(BlueprintCallable)
+		virtual void AttackExecute(FString AttackName);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		virtual void AttackExecuteServer(const FString &AttackName);
+
+	UFUNCTION()
+		virtual void AttackExecuteClient(FString AttackName);
+
+	/** Function for detecting abilities */
+	UFUNCTION()
+		virtual void DetectAction();
+
 	/** Timer Function to replicate DELAY in Blueprints */
 	UFUNCTION()
 		void onTimerEnd();
@@ -337,7 +460,7 @@ public:
 		void FillHitboxArray();
 
 	/** Helper function for Block animation */
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void BlockAnimation();
 
 	/** Movement Handler */
@@ -353,6 +476,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void AddSpeedModifier(float Modifier, float Duration);
 
+	UFUNCTION(BlueprintCallable)
+		void AddDamageModifier(float Modifier, float Duration, int NumHits);
+
+	UFUNCTION(BlueprintCallable)
+		void AddDefenseModifier(float Modifier, float Duration, int NumHits);
+
+	UFUNCTION(BlueprintCallable)
+		float CalcFinalDamage(float Damage);
+
+	UFUNCTION(BlueprintCallable)
+		float GetSpeedAmt();
+
 	/** Block Handler */
 	UFUNCTION(BlueprintCallable)
 		void BlockHandler();
@@ -366,8 +501,6 @@ public:
 		void AttackHandler(
 			FString AttackName,
 			FString AttackType, 
-			UPARAM(ref) float &Cooldown,
-			float CooldownAmt,
 			float CastCooldownAmt,
 			float CastSpeed, 
 			bool IsChainable,
@@ -380,13 +513,33 @@ public:
 			bool Projectile
 		);
 	UFUNCTION()
-		void AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
+		void AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
 	UFUNCTION()
-		void AttackHandler3(FString AttackName, FString AttackType, bool UseHitbox, UBoxComponent* Hitbox);
+		void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox);
 
 	/** Checks if the current attack should be chainable */
 	UFUNCTION()
 		bool CheckChainable(FString CurrentAttack);
+
+	/** Calculate Cooldown Amount after cooldown buffs and debuffs */
+	UFUNCTION()
+		float GetFinalCooldownAmt(FString AttackName, float CooldownAmt);
+
+	/** Get Cooldown for attack */
+	UFUNCTION(BlueprintCallable)
+		float GetCooldown(FString AttackName);
+
+	/** Set Cooldown for attack */
+	UFUNCTION(BlueprintCallable)
+		void SetCooldown(FString AttackName, float CooldownAmt);
+
+	/** Get Cooldown Amount for attack */
+	UFUNCTION(BlueprintCallable)
+		float GetCooldownAmt(FString AttackName);
+
+	/** Get Damage for attack */
+	UFUNCTION(BlueprintCallable)
+		float GetDamage(FString AttackName);
 
 	/** Checks if the current attack should be carried out */
 	UFUNCTION()
@@ -442,23 +595,23 @@ public:
 	/* **************************** Button Presses **************************** */
 	/* Block */
 	UFUNCTION()
-		void BlockPressedEventClient();
+		void BlockPressedEvent();
 	UFUNCTION()
-		void BlockReleasedEventClient();
+		void BlockReleasedEvent();
 	/* SideStep */
 	UFUNCTION()
-		void SideStepPressedEventClient();
+		void SideStepPressedEvent();
 	UFUNCTION()
-		void SideStepPressedEventClient2();
+		void SideStepPressedEvent2();
 	UFUNCTION()
-		void SideStepPressedEventClient3();
+		void SideStepPressedEvent3();
 	/* Roll */
 	UFUNCTION()
-		void RollPressedEventClient();
+		void RollPressedEvent();
 	UFUNCTION()
-		void RollPressedEventClient2();
+		void RollPressedEvent2();
 	UFUNCTION()
-		void RollPressedEventClient3();
+		void RollPressedEvent3();
 
 protected:
 	/** Called when the game starts or when spawned */
@@ -468,7 +621,7 @@ protected:
 	FTimerHandle ResilienceRegenTimerHandle;
 	FTimerHandle ResilienceDrainTimerHandle;
 	FTimerHandle delayTimerHandle;
-
+	
 private:
 	
 };

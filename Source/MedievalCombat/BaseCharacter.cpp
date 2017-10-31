@@ -174,11 +174,11 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
 	DOREPLIFETIME(ABaseCharacter, LastAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackName);
+	DOREPLIFETIME(ABaseCharacter, DetectMode);
 
 	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
 	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
-	DOREPLIFETIME(ABaseCharacter, BlockCooldown);
 	DOREPLIFETIME(ABaseCharacter, SubResilience);
 
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
@@ -201,6 +201,11 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
+	DOREPLIFETIME(ABaseCharacter, AttackArray);
+	DOREPLIFETIME(ABaseCharacter, ComboExtenderArray);
+	DOREPLIFETIME(ABaseCharacter, UtilityArray);
+	DOREPLIFETIME(ABaseCharacter, ComboFinisherArray);
+	DOREPLIFETIME(ABaseCharacter, DamageTable);
 
 	DOREPLIFETIME(ABaseCharacter, MenuUp);
 
@@ -245,10 +250,15 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
+void ABaseCharacter::AddRemainingInputs(){
 
+}
 // Delay function
 void ABaseCharacter::onTimerEnd()
 {
+}
+void ABaseCharacter::WeaponVisibility(bool set) {
+	Weapon->SetOnlyOwnerSee(set);
 }
 /*********************** DAMAGE INDICATOR ***********************/
 void ABaseCharacter::InitiateDamageEffect() {
@@ -355,22 +365,22 @@ void ABaseCharacter::ResilienceDrainTimer() {
 }
 
 /*********************** ROLL ***********************/
-void ABaseCharacter::SideStepPressedEventClient() {
-	if (MenuUp == false && Flinched == false && CanAttack == true && IsDead == false) {
+void ABaseCharacter::SideStepPressedEvent() {
+	if (MenuUp == false && Flinched == false && CanAttack == true && IsDead == false && IsRolling == false && IsSideStepping == false && GetCooldown("SideStep") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
 		IsSideStepping = true;
 		CanAttack = false;
 		MakeCurrentActionLastAction("SideStep");
 		IsBlocking = false;
 		Invincible = true;
-		SideStepCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + SideStepCooldownAmt;
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient2, 0.35f, false);
+		SetCooldown("SideStep", GetCooldownAmt("SideStep"));
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent2, 0.35f, false);
 	}
 }
-void ABaseCharacter::SideStepPressedEventClient2() {
+void ABaseCharacter::SideStepPressedEvent2() {
 	IsSideStepping = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEventClient3, 0.1f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent3, 0.1f, false);
 }
-void ABaseCharacter::SideStepPressedEventClient3() {
+void ABaseCharacter::SideStepPressedEvent3() {
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}
@@ -379,8 +389,8 @@ void ABaseCharacter::SideStepPressedEventClient3() {
 	}
 }
 
-void ABaseCharacter::RollPressedEventClient() {
-	if (MenuUp == false) {
+void ABaseCharacter::RollPressedEvent() {
+	if (MenuUp == false && IsRolling == false && IsSideStepping == false && Resilience >= 25 && GetCooldown("Roll") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
 		Resilience -= 25;
 		IsRolling = true;
 		RollMovement = true;
@@ -396,14 +406,14 @@ void ABaseCharacter::RollPressedEventClient() {
 		if (ResilienceDrainTimerHandle.IsValid() == true) {
 			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 		}
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient2, 0.5f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.5f, false);
 	}
 }
-void ABaseCharacter::RollPressedEventClient2() {
+void ABaseCharacter::RollPressedEvent2() {
 	RollMovement = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEventClient3, 0.2f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent3, 0.2f, false);
 }
-void ABaseCharacter::RollPressedEventClient3() {
+void ABaseCharacter::RollPressedEvent3() {
 	IsRolling = false;
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
@@ -436,7 +446,7 @@ bool ABaseCharacter::MovementHandlerServer_Validate() {
 	return true;
 }
 void ABaseCharacter::MovementHandlerClient() {
-	if (AttackCastCooldown > UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsRolling == false && IsSideStepping == false){
+	if (AttackCastCooldown > CurrentGameTime && IsRolling == false && IsSideStepping == false){
 		if (this->HasAuthority()) {
 			CanMove = false;
 		}
@@ -468,12 +478,12 @@ void ABaseCharacter::MovementHandlerClient() {
 void ABaseCharacter::AddSpeedModifier(float Modifier, float Duration) {
 	FSpeedModifierStruct tempMod;
 	tempMod.Modifier = Modifier;
-	tempMod.Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + Duration;
+	tempMod.Cooldown = CurrentGameTime + Duration;
 	SpeedEffectsArray.Add(tempMod);
 }
 
 /*********************** BLOCK ***********************/
-void ABaseCharacter::BlockPressedEventClient() {
+void ABaseCharacter::BlockPressedEvent() {
 	if (MenuUp == false) {
 		BlockPressed = true;
 		if (LastAttack != "Block") {
@@ -481,10 +491,10 @@ void ABaseCharacter::BlockPressedEventClient() {
 		}
 	}
 }
-void ABaseCharacter::BlockReleasedEventClient() {
+void ABaseCharacter::BlockReleasedEvent() {
 	IsBlocking = false;
 	BlockPressed = false;
-	BlockCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + 1;
+	SetCooldown("BlockPress", GetCooldownAmt("BlockPress"));
 }
 void ABaseCharacter::BlockHandler() {
 	if (BlockPressed == true) {
@@ -501,7 +511,7 @@ void ABaseCharacter::BlockHandler() {
 			}
 		}
 		else {
-			if (IsBlocking == false && BlockCooldown <= UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime) {
 				IsBlocking = true;
 				if (SubResilience == false) {
 					Resilience -= ResilienceDrainAmt;
@@ -656,6 +666,9 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
 				AttackedTarget->InitiateDamageEffect();
 				AttackEffect(AttackedTarget, CurrentAttackName);
+				if (AttackedTarget->DetectMode == true) {
+					AttackedTarget->DetectAction();
+				}
 				if (AttackedTarget->Health <= 0) {
 					AttackedTarget->ServerDeath();
 				}
@@ -671,6 +684,22 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 
 }
+void ABaseCharacter::AttackExecute(FString AttackName) {
+
+}
+void ABaseCharacter::AttackExecuteServer_Implementation(const FString &AttackName) {
+}
+bool ABaseCharacter::AttackExecuteServer_Validate(const FString &AttackName) {
+	return true;
+}
+void ABaseCharacter::AttackExecuteClient(FString AttackName) {
+}
+
+/** Function for detecting abilities */
+void ABaseCharacter::DetectAction() {
+
+}
+
 /* On receiving any damage, will decrement health and if below or equal to zero, dies */
 void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
@@ -678,6 +707,9 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 	{
 		Health = Health - Damage;
 		InitiateDamageEffect();
+		if (DetectMode == true) {
+			DetectAction();
+		}
 		if (Health <= 0)
 		{
 			ServerDeath();
@@ -687,6 +719,9 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 void ABaseCharacter::ApplyDamage(float Damage) {
 	Health -= Damage;
 	InitiateDamageEffect();
+	if (DetectMode == true) {
+		DetectAction();
+	}
 	if (Health <= 0) {
 		ServerDeath();
 	}
@@ -732,20 +767,19 @@ void ABaseCharacter::RespawnEvent()
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
-void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, UPARAM(ref) float &Cooldown, float CooldownAmt, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
-	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackType, Cooldown) == true && MenuUp == false) {
+void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
+	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, GetCooldownAmt(AttackName)) == true && MenuUp == false && CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
 		CheckMoveDuringAttack();
 		CanAttack = false;
 		CurrentAttackName = AttackName;
-		Cooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CooldownAmt;
-		AttackCastCooldown = UKismetSystemLibrary::GetGameTimeInSeconds(this) + CastCooldownAmt;
 		PlayActionAnim(Animation, CastSpeed, true);
+		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
 		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 }
-void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
+void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (UseHitbox == false && Projectile == false) {
 			CanDamage = true;
@@ -759,23 +793,24 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 			}
 		}
 	}
-	CurrentDamage = Damage;
+	CurrentDamage = CalcFinalDamage(Damage);
 	FTimerDelegate TimerDel;
-	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, UseHitbox, Hitbox);
+	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, CastCooldownAmt, UseHitbox, Hitbox);
 	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
 }
-void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, bool UseHitbox, UBoxComponent* Hitbox) {
+void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
 	MakeCurrentActionLastAction(AttackType);
 	if (UseHitbox == true) {
 		Hitbox->bGenerateOverlapEvents = false;
 	}
+	SetCooldown("BlockPress", .2);
 	CanDamage = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
 	if (Flinched == false) {
 		CanAttack = true;
 	}
-	//Reset sensitivity
+	SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 }
 /** Function for shooting projectiles */
 void ABaseCharacter::ProjectileHandler(FString AttackName) {
@@ -812,7 +847,6 @@ void ABaseCharacter::ProjectileHandler(FString AttackName) {
 		}
 	}
 }
-
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
 	if (Overlapping == true) {
@@ -852,15 +886,15 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 }
 /** Checks if the current attack should be carried out */
 bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt) {
-	if (CooldownAmt >= UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+	if (GetCooldown(CurrentAttack) >= CurrentGameTime || (CurrentAttack == "CounteringBlow" && AttackCastCooldown + 0.2f >= CurrentGameTime)) {
 		return false;
 	}
 	// If you are not in cast cooldown or attack cooldown
-	else if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this) && CooldownAmt < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+	else if (AttackCastCooldown < CurrentGameTime && GetCooldown(CurrentAttack) < CurrentGameTime) {
 		return true;
 	}
 	// If you are still in cast cooldown
-	else if (AttackCastCooldown >= UKismetSystemLibrary::GetGameTimeInSeconds(this) && IsChainable == true) {
+	else if (AttackCastCooldown >= CurrentGameTime && IsChainable == true) {
 		return true;
 	}
 	else {
@@ -869,7 +903,7 @@ bool ABaseCharacter::IsValidAttack(bool IsChainable, float CastCooldownAmt, FStr
 }
 /** Checks if the current attack should be chainable */
 bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
-	if (AttackCastCooldown < UKismetSystemLibrary::GetGameTimeInSeconds(this)) {
+	if (AttackCastCooldown < CurrentGameTime) {
 		return false;
 	}
 	if (CurrentAttack == "SBasicAttack") {
@@ -896,6 +930,125 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 	}
 }
 
+/** Calculate Speed Amount */
+float ABaseCharacter::GetSpeedAmt() {
+	float TotalAmount = 230.0f;
+	for (int i = 0; i < SpeedEffectsArray.Num(); i++) {
+		if (SpeedEffectsArray[i].Cooldown < CurrentGameTime) {
+			SpeedEffectsArray.RemoveAt(i, 1, true);
+			i--;
+		}
+		else  {
+			TotalAmount += (SpeedEffectsArray[i].Modifier * 230.0f);
+		}
+	}
+	return TotalAmount;
+}
+/** Calculate Cooldown Amount after cooldown buffs and debuffs */
+float ABaseCharacter::GetFinalCooldownAmt(FString AttackName, float CooldownAmt) {
+	float TotalAmount = 0.0f;
+	TotalAmount += CooldownAmt;
+	for (int i = 0; i < CooldownEffectsArray.Num(); i++) {
+		if (CooldownEffectsArray[i].Duration < CurrentGameTime) {
+			CooldownEffectsArray.RemoveAt(i, 1, true);
+			i--;
+		}
+		else if (CooldownEffectsArray[i].AbilityName == AttackName) {
+			TotalAmount += (CooldownEffectsArray[i].Modifier * CooldownAmt);
+			CooldownEffectsArray.RemoveAt(i, 1, true);
+			i--;
+		}
+	}
+	return TotalAmount;
+}
+/** Get Cooldown for attack */
+float ABaseCharacter::GetCooldown(FString AttackName) {
+	for (int i = 0; i < AttackArray.Num(); i++) {
+		if (AttackArray[i].AttackName.Equals(AttackName)) {
+			return AttackArray[i].Cooldown;
+		}
+	}
+	return 0.0f;
+}
+/** Set Cooldown for attack */
+void ABaseCharacter::SetCooldown(FString AttackName, float CooldownAmt) {
+	for (int i = 0; i < AttackArray.Num(); i++) {
+		if (AttackArray[i].AttackName.Equals(AttackName)) {
+			AttackArray[i].Cooldown = CurrentGameTime + CooldownAmt;
+		}
+	}
+}
+/** Get Damage for attack */
+float ABaseCharacter::GetDamage(FString AttackName) {
+	for (int i = 0; i < DamageTable.Num(); i++) {
+		if (DamageTable[i].Attack.Equals(AttackName)) {
+			return DamageTable[i].Damage;
+		}
+	}
+	return 0.0f;
+}
+/** Get Cooldown Amount for attack */
+float ABaseCharacter::GetCooldownAmt(FString AttackName) {
+	for (int i = 0; i < AttackArray.Num(); i++) {
+		if (AttackArray[i].AttackName.Equals(AttackName)) {
+			return AttackArray[i].CooldownAmt;
+		}
+	}
+	return 0.0f;
+}
+/** Add Damage Buff/Debuff */
+void ABaseCharacter::AddDamageModifier(float Modifier, float Duration, int NumHits) {
+	FAttackModifierStruct tempMod;
+	tempMod.Modifier = Modifier;
+	tempMod.Cooldown = CurrentGameTime + Duration;
+	tempMod.NumHits = NumHits;
+	AttackModifierArray.Add(tempMod);
+}
+/** Add Defense Buff/Debuff */
+void ABaseCharacter::AddDefenseModifier(float Modifier, float Duration, int NumHits) {
+	FDefenseModifierStruct tempMod;
+	tempMod.Modifier = Modifier;
+	tempMod.Cooldown = CurrentGameTime + Duration;
+	tempMod.NumHits = NumHits;
+	DefenseModifierArray.Add(tempMod);
+}
+float ABaseCharacter::CalcFinalDamage(float Damage) {
+	float TotalAttackMods = 1.0f;
+	float TotalDefenseMods = 1.0f;
+	for (int i = 0; i < AttackModifierArray.Num(); i++) {
+		if (AttackModifierArray[i].Cooldown > CurrentGameTime) {
+			if (AttackModifierArray[i].NumHits > 0) {
+				TotalAttackMods += (AttackModifierArray[i].Modifier);
+				AttackModifierArray[i].NumHits--;
+			}
+			else {
+				AttackModifierArray.RemoveAt(i, 1, true);
+				i--;
+			}
+		}
+		else {
+			AttackModifierArray.RemoveAt(i, 1, true);
+			i--;
+		}
+	}
+	for (int i = 0; i < DefenseModifierArray.Num(); i++) {
+		if (DefenseModifierArray[i].Cooldown > CurrentGameTime) {
+			if (DefenseModifierArray[i].NumHits > 0) {
+				TotalDefenseMods += (DefenseModifierArray[i].Modifier);
+				DefenseModifierArray[i].NumHits--;
+			}
+			else {
+				DefenseModifierArray.RemoveAt(i, 1, true);
+				i--;
+			}
+		}
+		else {
+			DefenseModifierArray.RemoveAt(i, 1, true);
+			i--;
+		}
+	}
+	return Damage * (TotalAttackMods/TotalDefenseMods);
+}
 /*********************** DAMAGE EFFECTS ***********************/
 /* Bleed Event Handler */
 void ABaseCharacter::BleedEvent() {
