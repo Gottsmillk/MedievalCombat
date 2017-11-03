@@ -42,13 +42,6 @@ ABaseCharacter::ABaseCharacter()
 	// Camera does not rotate relative to arm
 	FollowCamera->bUsePawnControlRotation = false;
 
-	// Create a direction camera
-	DirectionCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DirectionCamera"));
-	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	DirectionCamera->SetupAttachment(RootComponent);
-	// Camera does not rotate relative to arm
-	DirectionCamera->bUsePawnControlRotation = false;
-
 	// Create a capsule component for testing if player is correctly aimed upon
 	PlayerAimCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PlayerAimCollision"));
 	PlayerAimCollision->SetVisibility(false);
@@ -168,22 +161,29 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
+	DOREPLIFETIME(ABaseCharacter, CurrentGameTime);
+
 	DOREPLIFETIME(ABaseCharacter, IsDead);
 	DOREPLIFETIME(ABaseCharacter, Health);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
 	DOREPLIFETIME(ABaseCharacter, LastAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackName);
+	DOREPLIFETIME(ABaseCharacter, CurrentAttackType);
 	DOREPLIFETIME(ABaseCharacter, DetectMode);
+	DOREPLIFETIME(ABaseCharacter, ComboAmount);
+	DOREPLIFETIME(ABaseCharacter, ResilienceAttackReplenish);
+	DOREPLIFETIME(ABaseCharacter, ResilienceDefenseReplenish);
 
 	DOREPLIFETIME(ABaseCharacter, BlockPressed);
 	DOREPLIFETIME(ABaseCharacter, IsBlocking);
 	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
-	DOREPLIFETIME(ABaseCharacter, SubResilience);
+	DOREPLIFETIME(ABaseCharacter, BlockSubtractResilience);
 
 	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
 	DOREPLIFETIME(ABaseCharacter, Flinched);
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
+	DOREPLIFETIME(ABaseCharacter, HBasicAttackSuperArmor);
 
 	DOREPLIFETIME(ABaseCharacter, IsRolling);
 	DOREPLIFETIME(ABaseCharacter, RollMovement);
@@ -201,6 +201,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
+	DOREPLIFETIME(ABaseCharacter, DamageOverTimeArray);
 	DOREPLIFETIME(ABaseCharacter, AttackArray);
 	DOREPLIFETIME(ABaseCharacter, ComboExtenderArray);
 	DOREPLIFETIME(ABaseCharacter, UtilityArray);
@@ -239,8 +240,19 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockAnimation(); // Changes animation based on if player is blocking
 	DamageIndicatorTick(); // Handles displaying the damage indicator
 	FlinchEventTrigger(); // Applies flinching when player is attacked
+	TrackDamageOverTime(); // Tracks Damage over Time
+	CurrentGameTime = UKismetSystemLibrary::GetGameTimeInSeconds(this->GetWorld());
 	if (IsDead == true && this->bUseControllerRotationYaw == 0) {
 		this->bUseControllerRotationYaw = 1;
+	}
+	if (AttackCastCooldown <= CurrentGameTime && ComboAmount > 0) {
+		ComboAmount = 0;
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
+		ResilienceAttackReplenish = 0.0f;
+	}
+	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
+		ResilienceDefenseReplenish = 0.0f;
 	}
 }
 
@@ -286,7 +298,7 @@ void ABaseCharacter::DamageIndicatorTick() {
 		float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
 		float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
 		FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
-		float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 60.0f, 3.0f, 0.0f);
+		float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 0.1f, 3.0f, 0.0f);
 		float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
 		LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
 		const FName Power("Power");
@@ -315,7 +327,7 @@ void ABaseCharacter::FillHitboxArray() {
 }
 void ABaseCharacter::HitboxHandler() {
 	if (this->HasAuthority()) { // Only done on server
-		if (CanDamage == true) { // Only when swinging
+		if (HurtboxActive == true) { // Only when swinging
 			if (InitialHitbox == true) { // Fills the beginning trace
 				InitialHitbox = false;
 				FillHitboxArray();
@@ -354,9 +366,7 @@ void ABaseCharacter::HitboxHandler() {
 
 /*********************** RESILIENCE ***********************/
 void ABaseCharacter::ResilienceRegenTimer() {
-	if (Resilience < 100) { // Regen resilience
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceRegenAmt, 0, 100);
-	}
+	Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceRegenAmt, 0, 100);
 }
 void ABaseCharacter::ResilienceDrainTimer() {
 	if (Resilience >= ResilienceDrainAmt) { // Drain resilience
@@ -366,32 +376,31 @@ void ABaseCharacter::ResilienceDrainTimer() {
 
 /*********************** ROLL ***********************/
 void ABaseCharacter::SideStepPressedEvent() {
-	if (MenuUp == false && Flinched == false && CanAttack == true && IsDead == false && IsRolling == false && IsSideStepping == false && GetCooldown("SideStep") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+	if (MenuUp == false && Flinched == false && (CanAttack == true || CurrentAttackName == "SBasicAttack") && IsDead == false && IsRolling == false && IsSideStepping == false && GetCooldown("SideStep") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
 		IsSideStepping = true;
 		CanAttack = false;
 		MakeCurrentActionLastAction("SideStep");
 		IsBlocking = false;
 		Invincible = true;
+		HurtboxActive = false;
 		SetCooldown("SideStep", GetCooldownAmt("SideStep"));
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent2, 0.35f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent2, 0.3f, false);
 	}
 }
 void ABaseCharacter::SideStepPressedEvent2() {
 	IsSideStepping = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent3, 0.1f, false);
-}
-void ABaseCharacter::SideStepPressedEvent3() {
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}
 	if (CanAttack == false) {
 		CanAttack = true;
 	}
+	AttackCastCooldown = 0.0f;
 }
 
 void ABaseCharacter::RollPressedEvent() {
-	if (MenuUp == false && IsRolling == false && IsSideStepping == false && Resilience >= 25 && GetCooldown("Roll") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
-		Resilience -= 25;
+	if (MenuUp == false && IsRolling == false && IsSideStepping == false && Resilience >= 30 && GetCooldown("Roll") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		Resilience -= 30;
 		IsRolling = true;
 		RollMovement = true;
 		MakeCurrentActionLastAction("Roll");
@@ -399,34 +408,33 @@ void ABaseCharacter::RollPressedEvent() {
 		Flinched = false;
 		IsBlocking = false;
 		Invincible = true;
-		CanDamage = false;
-		if (ResilienceRegenTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+		HurtboxActive = false;
+		if (this->HasAuthority()) {
+			if (ResilienceDrainTimerHandle.IsValid() == true) {
+				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
+			}
 		}
-		if (ResilienceDrainTimerHandle.IsValid() == true) {
-			GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-		}
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.5f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.45f, false);
 	}
 }
 void ABaseCharacter::RollPressedEvent2() {
 	RollMovement = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent3, 0.2f, false);
+	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent3, 0.15f, false);
 }
 void ABaseCharacter::RollPressedEvent3() {
 	IsRolling = false;
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}
-	if (ResilienceRegenTimerHandle.IsValid() == false) {
-		GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true);
-	}
-	if (ResilienceDrainTimerHandle.IsValid() == false) {
-		GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
+	if (this->HasAuthority()) {
+		if (ResilienceDrainTimerHandle.IsValid() == false) {
+			GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
+		}
 	}
 	if (CanAttack == false) {
 		CanAttack = true;
 	}
+	AttackCastCooldown = 0.0f;
 }
 
 /*********************** Movement ***********************/
@@ -497,30 +505,38 @@ void ABaseCharacter::BlockReleasedEvent() {
 	SetCooldown("BlockPress", GetCooldownAmt("BlockPress"));
 }
 void ABaseCharacter::BlockHandler() {
+	if (Flinched == true || AttackCastCooldown > CurrentGameTime || IsBlocking == true || IsRolling == true || IsSideStepping == true) {
+		if (this->HasAuthority()) {
+			if (ResilienceRegenTimerHandle.IsValid() == true) {
+				GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
+			}
+		}
+	}
+	else {
+		if (this->HasAuthority()) {
+			if (ResilienceRegenTimerHandle.IsValid() == false) {
+				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
+			}
+		}
+	}
 	if (BlockPressed == true) {
-		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true || IsSideStepping == true) {
+		if (Resilience < ResilienceDrainAmt || Flinched == true || MenuUp == true || CanAttack == false || IsRolling == true || IsSideStepping == true || this->GetMovementComponent()->IsMovingOnGround() == false) {
 			IsBlocking = false;
-			SubResilience = false;
+			BlockSubtractResilience = false;
 			if (this->HasAuthority()) {
-				if (ResilienceRegenTimerHandle.IsValid() == false) {
-					GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-				}
 				if (ResilienceDrainTimerHandle.IsValid() == true) {
 					GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 				}
 			}
 		}
 		else {
-			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime) {
+			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime && Resilience >= 20.0f) {
 				IsBlocking = true;
-				if (SubResilience == false) {
-					Resilience -= ResilienceDrainAmt;
-					SubResilience = true;
+				if (BlockSubtractResilience == false) {
+					Resilience = UKismetMathLibrary::FClamp(Resilience - 20.0f, 0.0f, 100.0f);
+					BlockSubtractResilience = true;
 				}
 				if (this->HasAuthority()) {
-					if (ResilienceRegenTimerHandle.IsValid() == true) {
-						GetWorld()->GetTimerManager().ClearTimer(ResilienceRegenTimerHandle);
-					}
 					if (ResilienceDrainTimerHandle.IsValid() == false) {
 						GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true, 1.0f);
 					}
@@ -530,14 +546,11 @@ void ABaseCharacter::BlockHandler() {
 	}
 	else if (BlockPressed == false) {
 		if (this->HasAuthority()) {
-			if (ResilienceRegenTimerHandle.IsValid() == false) {
-				GetWorldTimerManager().SetTimer(ResilienceRegenTimerHandle, this, &ABaseCharacter::ResilienceRegenTimer, 1.0f, true, 1.0f);
-			}
 			if (ResilienceDrainTimerHandle.IsValid() == true) {
 				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
 			}
 		}
-		SubResilience = false;
+		BlockSubtractResilience = false;
 	}
 }
 void ABaseCharacter::BlockAnimation() {
@@ -617,6 +630,15 @@ void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingC
 	}
 }
 
+/*********************** PARTICLE EFFECTS ***********************/
+void ABaseCharacter::InitializeParticle_Implementation(TSubclassOf<AActor> Particle) {
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Instigator = this;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AActor * SpawnedActor = (GetWorld()->SpawnActor<AActor>(Particle, GetMesh()->K2_GetComponentLocation(), GetMesh()->K2_GetComponentRotation(), SpawnParameters));
+	SpawnedActor->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false));
+}
+
 /*********************** EVENTS UPON TAKING DAMAGE ***********************/
 /* Flinch Handler */
 void ABaseCharacter::FlinchEventTrigger() {
@@ -637,14 +659,14 @@ bool ABaseCharacter::FlinchEventServer_Validate() {
 	return true;
 }
 void ABaseCharacter::FlinchEvent() {
-	if (Health > 0 && SuperArmor == false) {
+	if (Health > 0 && SuperArmor == false && HBasicAttackSuperArmor == false) {
 		FlinchTrigger = false;
 		StopAnimations();
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
 		PlayActionAnim(FlinchAnimMontage, 1.1f, false);
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .6f, false);
+		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .7f, false);
 	}
 }
 void ABaseCharacter::FlinchEvent2() {
@@ -653,34 +675,80 @@ void ABaseCharacter::FlinchEvent2() {
 	}
 	CanAttack = true;
 }
-//When a hitbox is triggered and a weapon hit
+/** When a hitbox is triggered and a weapon hit */
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
-		CurrentAttackHit = true;
-		CanDamage = false;
+		HurtboxActive = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
-		if (AttackedTarget->Invincible == false) {
-			if (AttackedTarget->IsBlocking != true || GetPlayerDirections(AttackedTarget) == false) { // Incorrectly blocked
-				AttackedTarget->IsBlocking = false;
-				AttackedTarget->FlinchTrigger = true;
-				AttackedTarget->Health = (AttackedTarget->Health) - CurrentDamage;
-				AttackedTarget->InitiateDamageEffect();
-				AttackEffect(AttackedTarget, CurrentAttackName);
-				if (AttackedTarget->DetectMode == true) {
-					AttackedTarget->DetectAction();
-				}
-				if (AttackedTarget->Health <= 0) {
-					AttackedTarget->ServerDeath();
-				}
+		InflictDamage(AttackedTarget, CurrentDamage, true, true);
+	}
+}
+bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches) {
+	if (Target->Invincible == false) {
+		if (Target->IsBlocking != true || GetPlayerDirections(Target) == false || BlockCheck == false) { // Incorrectly blocked
+			CurrentAttackHit = true;
+			ResilienceAttackReplenish += Damage;
+			AttackEffect(Target, CurrentAttackName);
+			Target->IsBlocking = false;
+			if (Flinches == true) {
+				Target->FlinchTrigger = true;
 			}
-			else { // Correctly blocked
-				FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
-				UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
-				AttackedTarget->RelayAnimation(BlockRecoilMontage, 1.0f);
-			}
+			Target->ApplyDamage(Damage, this);
+			return true;
+		}
+		else { // Correctly blocked
+			FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
+			UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
+			Target->RelayAnimation(BlockRecoilMontage, 1.0f);
+			Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - (Damage / 2), 0.0f, 100.0f);
+			return false;
+		}
+	}
+	return false;
+}
+/** On receiving any damage, will decrement health and if below or equal to zero, dies */
+void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (!Invincible)
+	{
+		Health = Health - Damage;
+		InitiateDamageEffect();
+		SendEventToAttacker(Cast<ABaseCharacter>(DamageCauser));
+		if (DetectMode == true) {
+			DetectAction();
+		}
+		if (Health <= 0)
+		{
+			ServerDeath();
 		}
 	}
 }
+void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
+	Health -= Damage;
+	ResilienceDefenseReplenish += Damage * 2.0f;
+	InitiateDamageEffect();
+	Attacker->ComboAmount++;
+	SendEventToAttacker(Attacker);
+	if (DetectMode == true) {
+		DetectAction();
+	}
+	if (Health <= 0) {
+		ServerDeath();
+	}
+}
+void ABaseCharacter::ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt) {
+	FDamageOverTime tempMod;
+	tempMod.Type = Type;
+	tempMod.DamageAmt = DamageAmt;
+	tempMod.TicksLeft = Amount;
+	tempMod.LastTick = CurrentGameTime + StartDelay;
+	tempMod.IncrementAmt = IncrementAmt;
+	DamageOverTimeArray.Add(tempMod);
+}
+/** Apply override so player who received damage can send events to player who dealt damage */
+void ABaseCharacter::SendEventToAttacker(ABaseCharacter* Attacker) {
+}
+/** Apply Weapon effects when damage taken */
 void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 
 }
@@ -698,33 +766,6 @@ void ABaseCharacter::AttackExecuteClient(FString AttackName) {
 /** Function for detecting abilities */
 void ABaseCharacter::DetectAction() {
 
-}
-
-/* On receiving any damage, will decrement health and if below or equal to zero, dies */
-void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{
-	if (!Invincible)
-	{
-		Health = Health - Damage;
-		InitiateDamageEffect();
-		if (DetectMode == true) {
-			DetectAction();
-		}
-		if (Health <= 0)
-		{
-			ServerDeath();
-		}
-	}
-}
-void ABaseCharacter::ApplyDamage(float Damage) {
-	Health -= Damage;
-	InitiateDamageEffect();
-	if (DetectMode == true) {
-		DetectAction();
-	}
-	if (Health <= 0) {
-		ServerDeath();
-	}
 }
 
 // When a character dies
@@ -772,8 +813,12 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float
 		CheckMoveDuringAttack();
 		CanAttack = false;
 		CurrentAttackName = AttackName;
+		CurrentAttackType = AttackType;
 		PlayActionAnim(Animation, CastSpeed, true);
 		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
+		if (AttackName == "HBasicAttack") {
+			HBasicAttackSuperArmor = true;
+		}
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
@@ -782,7 +827,7 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float
 void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
 		if (UseHitbox == false && Projectile == false) {
-			CanDamage = true;
+			HurtboxActive = true;
 		}
 		else if (UseHitbox == true) {
 			Hitbox->bGenerateOverlapEvents = true;
@@ -793,6 +838,7 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 			}
 		}
 	}
+	HBasicAttackSuperArmor = false;
 	CurrentDamage = CalcFinalDamage(Damage);
 	FTimerDelegate TimerDel;
 	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, CastCooldownAmt, UseHitbox, Hitbox);
@@ -804,7 +850,7 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, floa
 		Hitbox->bGenerateOverlapEvents = false;
 	}
 	SetCooldown("BlockPress", .2);
-	CanDamage = false;
+	HurtboxActive = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
 	if (Flinched == false) {
@@ -923,7 +969,21 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 		}
 	}
 	else if (CurrentAttack == "ComboExtender") {
-		return true;
+		if (LastAttack == "SBasicAttack" || LastAttack == "HBasicAttack" || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	else if (CurrentAttack == "ComboFinisher") {
+		if (LastAttack == "SBasicAttack" || LastAttack == "HBasicAttack" || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+			return true;
+		}
+		else {
+			return false;
+		}
+
 	}
 	else {
 		return false;
@@ -996,6 +1056,14 @@ float ABaseCharacter::GetCooldownAmt(FString AttackName) {
 	}
 	return 0.0f;
 }
+/** Add Cooldown Buff/Debuff */
+void ABaseCharacter::AddCooldownModifier(float Modifier, FString AbilityName, float Duration) {
+	FCooldownEffectsStruct tempMod;
+	tempMod.Modifier = Modifier;
+	tempMod.AbilityName = AbilityName;
+	tempMod.Duration = CurrentGameTime + Duration;
+	CooldownEffectsArray.Add(tempMod);
+}
 /** Add Damage Buff/Debuff */
 void ABaseCharacter::AddDamageModifier(float Modifier, float Duration, int NumHits) {
 	FAttackModifierStruct tempMod;
@@ -1050,12 +1118,26 @@ float ABaseCharacter::CalcFinalDamage(float Damage) {
 	return Damage * (TotalAttackMods/TotalDefenseMods);
 }
 /*********************** DAMAGE EFFECTS ***********************/
-/* Bleed Event Handler */
-void ABaseCharacter::BleedEvent() {
-	if (!Invincible)
-	{
-		Health = Health - 3;
-		if (Health <= 0) 
-			ServerDeath(); 
+/* Track Damage over Time */
+void ABaseCharacter::TrackDamageOverTime() {
+	for (int i = 0; i < DamageOverTimeArray.Num(); i++) {
+		if (DamageOverTimeArray[i].TicksLeft <= 0) {
+			DamageOverTimeArray.RemoveAt(i, 1, true);
+			i--;
+			continue;
+		}
+		if (DamageOverTimeArray[i].LastTick <= CurrentGameTime) {
+			if (DamageOverTimeArray[i].Type == "FlinchOnLast") {
+
+				if (DamageOverTimeArray[i].TicksLeft == 1) { // Last tick
+					InflictDamage(this, DamageOverTimeArray[i].DamageAmt, false, true);
+				}
+				else {
+					InflictDamage(this, DamageOverTimeArray[i].DamageAmt, false, false);
+				}
+			}
+			DamageOverTimeArray[i].TicksLeft--;
+			DamageOverTimeArray[i].LastTick = CurrentGameTime + DamageOverTimeArray[i].IncrementAmt;
+		}
 	}
 }

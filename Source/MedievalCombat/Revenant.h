@@ -13,7 +13,7 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UStaticMeshComponent* Shield;
 
-	/** Hurtbox for countering blow */
+	/** Hurtbox for Countering Blow */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UBoxComponent* CounteringBlowHurtbox;
 
@@ -21,6 +21,10 @@ class MEDIEVALCOMBAT_API ARevenant : public ABaseCharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UBoxComponent* KickHurtbox;
 	
+	/** Hurtbox for Powered Bash */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UBoxComponent* PoweredBashHurtbox;
+
 public:
 	// Sets default values for this character's properties
 	ARevenant();
@@ -28,11 +32,31 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		bool AgilityEffect = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool ImpairActive = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UWidgetComponent * HPOverhead;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Default)
 		TSubclassOf<ABaseCharacter> Shadow;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		TSubclassOf<AActor> UnwaverFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		TSubclassOf<AActor> ImpairFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
+		TSubclassOf<AActor> FortifyFX;
+
+	// Stores Attack Animations for SBasicAttack, animations are set in the blueprint
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<UAnimMontage *> SBasicAttackAnims;
+
+	// Stores Attack Animations for HBasicAttack, animations are set in the blueprint
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		TArray<UAnimMontage *> HBasicAttackAnims;
 
 	/** Called to bind functionality to input */
 		virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -47,11 +71,17 @@ public:
 	UFUNCTION()
 		void AddRemainingInputsClient();
 
+	/** Gets random montage */
+	UFUNCTION()
+		UAnimMontage* GetRandomMontage(TArray<UAnimMontage *> MontageArray);
+
 	/** Hitbox Events */
 	UFUNCTION()
 		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+	UFUNCTION()
+		void PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	/** Overriding Attack Effect Handler */
 	UFUNCTION()
@@ -91,9 +121,22 @@ public:
 	UFUNCTION(BlueprintCallable)
 		float SetAttackCooldownAmt(FString AttackName);
 
+	/** Unset SuperArmor for Unwaver */
+	UFUNCTION()
+		void UnsetAntiFlinch();
+
+	/** Apply override so player who received damage can send events to player who dealt damage */
+	UFUNCTION(BlueprintCallable)
+		virtual void SendEventToAttacker(ABaseCharacter* Attacker) override;
+
+	UFUNCTION()
+		void RemoveImpairActive();
+
 protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
 
 	FTimerHandle delay2TimerHandle;
+	FTimerHandle delay3TimerHandle;
+	FTimerHandle delay4TimerHandle;
 };
