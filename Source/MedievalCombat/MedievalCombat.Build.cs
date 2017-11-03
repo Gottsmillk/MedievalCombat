@@ -4,7 +4,7 @@ using UnrealBuildTool;
 
 public class MedievalCombat : ModuleRules
 {
-	public MedievalCombat(TargetInfo Target)
+	public MedievalCombat(ReadOnlyTargetRules Target) : base (Target)
 	{
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" , "OnlineSubsystemUtils"});
 
