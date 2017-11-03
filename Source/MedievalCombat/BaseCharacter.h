@@ -6,7 +6,7 @@
 #include "ProjectileBase.h"
 #include "BaseCharacter.generated.h"
 
-/* ------------------------------------ STRUCTS (Uncollapse on left) ----------------------------------- */
+/* ------------------------------------ STRUCTS ----------------------------------- */
 
 USTRUCT(BlueprintType)
 struct FDamageOverTime {
@@ -128,7 +128,7 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-/* ---------------------------------- COMPONENTS (Uncollapse on left) ---------------------------------- */
+/* ---------------------------------- COMPONENTS ---------------------------------- */
 
 	// Camera boom positioning the camera behind the character (SpringArm)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
@@ -175,7 +175,7 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 
 public:
 
-/* ------------------------------- INITIALIZATIONS (Uncollapse on left) -------------------------------- */
+/* ------------------------------- INITIALIZATIONS -------------------------------- */
 
 	// Sets default values for this character's properties
 	ABaseCharacter();
@@ -186,9 +186,9 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-/* ---------------------------------- VARIABLES (Uncollapse on left) ----------------------------------- */
+/* ---------------------------------- VARIABLES ----------------------------------- */
 
-	/* ***** Defaults ***** */
+	/* ****************************** Defaults ****************************** */
 
 	// Returns CameraBoom subobject
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -200,7 +200,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
 		float CurrentGameTime = 0.0f;
 
-	/* ***** Variables loaded from child blueprint ***** */
+	// Keeps track of the client's local game time
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		float XSensitivity = 0.5f;
+
+	// Keeps track of the client's local game time
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		float YSensitivity = 0.5f;
+
+
+	/* *************** Variables loaded from child blueprint **************** */
 
 	// Returns the custom Character Movement component provided by Advanced Locomotion plugin
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
@@ -210,7 +219,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CharacterInfo)
 		TSubclassOf <UCameraShake> PlayerTakeDamageCameraShake;
 
-	/* ***** Health Variables ***** */
+	/* ************************** Health Variables ************************** */
 
 	// Keeps track of current health
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
@@ -220,7 +229,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
 		float MaxHealth = 100.0;
 
-	/* ***** Hitbox Variables ***** */
+	/* ************************** Hitbox Variables ************************** */
 
 	// Array containing all of the weapon hurtbox components
 	UPROPERTY(EditAnywhere, Category = Hitbox)
@@ -238,7 +247,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
 		bool HurtboxActive = false;
 
-	/* ***** Damage and Death Variables ***** */
+	/* ********************* Damage and Death Variables ********************* */
 
 	// Raw damage of the current attack before buffs/debuffs 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
@@ -268,7 +277,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
 		TArray<FDefenseModifierStruct> DefenseModifierArray;
 
-	/* ***** Projectile Variables ***** */
+	/* ************************ Projectile Variables ************************ */
 
 	// Vector storing the maximum range a projectile can be shot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
@@ -278,7 +287,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
 		TSubclassOf<AProjectileBase> BaseProjectile;
 
-	/* ***** Attack Handler Variables ***** */
+	/* ********************** Attack Handler Variables ********************** */
 
 	// Number of hits in an ongoing combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
@@ -324,7 +333,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		bool DetectMode = false;
 
-	/* ***** Block Handler Variables ***** */
+	/* ********************** Block Handler Variables *********************** */
 
 	// Whether or not the block button was pressed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
@@ -338,7 +347,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
 		float BlockingAnim = 0.0;
 
-	/* ***** Flinch Variables ***** */
+	/* ************************** Flinch Variables *************************** */
 
 	// Whether or not to initiate a flinching event to player
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
@@ -356,7 +365,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool HBasicAttackSuperArmor = false;
 
-	/* ***** Roll/Sidestep Variables ***** */
+	/* ********************** Roll/Sidestep Variables *********************** */
 
 	// Whether player is rolling
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
@@ -370,7 +379,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
 		bool IsSideStepping = false;
 
-	/* ***** Movement Variables ***** */
+	/* ************************* Movement Variables ************************* */
 
 	// Whether or not player can move
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
@@ -400,7 +409,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
 		TArray<FSpeedModifierStruct> SpeedEffectsArray;
 
-	/* ***** Resilience Variables ***** */
+	/* ************************ Resilience Variables ************************ */
 
 	// Keeps track of Resilience
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
@@ -426,7 +435,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
 		bool BlockSubtractResilience = false;
 
-	/* ***** Cooldown Variables ***** */
+	/* ************************* Cooldown Variables ************************* */
 	
 	// Keeps track of cast cooldown for non chaining attacks
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
@@ -436,7 +445,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
 		TArray<FCooldownEffectsStruct> CooldownEffectsArray;
 
-	/* ***** Damage Indicator Variables ***** */
+	/* ********************* Damage Indicator Variables ********************* */
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
 		float CurrentDamageIndicator = 0;
@@ -459,7 +468,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
 		float DamageDeltaTime = 0;
 
-	/* ***** UI Variables ***** */
+	/* **************************** UI Variables ***************************** */
 
 	// Indicates whether a UI menu is up or not
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)

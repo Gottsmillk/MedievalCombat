@@ -765,7 +765,7 @@ void ARevenant::AttackExecuteClient(FString AttackName) {
 				FName LastResortComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Last_Resort_Combo_Montage.Last_Resort_Combo_Montage");
 				UAnimMontage *LastResortComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *LastResortComboAnimPath.ToString()));
 
-				if (CheckChainable("ComboFinisher") == true) { // If no combo
+				if (CheckChainable("ComboFinisher") == false) { // If no combo
 					AttackHandler(
 						AttackName, // Name
 						"ComboFinisher", // Type
