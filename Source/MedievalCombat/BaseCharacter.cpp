@@ -1,8 +1,10 @@
 
 #include "MedievalCombat.h"
 #include "BaseCharacter.h"
+#include "DamageNumberDisplay.h"
 #include "ProjectileBase.h"
 #include "UnrealNetwork.h"
+#include "UserWidget.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -76,8 +78,6 @@ ABaseCharacter::ABaseCharacter()
 	Weapon->SetVisibility(false);
 	Weapon->SetHiddenInGame(true);
 	Weapon->bGenerateOverlapEvents = false;
-	FName WepSocket = TEXT("Weaponsocket");
-	Weapon->SetupAttachment(GetMesh(), WepSocket);
 
 	/***** Create weapon hurtboxes *****/
 	// Weapon Hurtbox Base
@@ -149,9 +149,9 @@ ABaseCharacter::ABaseCharacter()
 	HitboxComponentArray[5] = Hurtbox5;
 
 	// Set Projectile to be spawned
-	static ConstructorHelpers::FObjectFinder<UBlueprint> ItemBlueprint(TEXT("Blueprint'/Game/Classes/Revenant/Blueprints/ProjectileBase.ProjectileBase'"));
-	if (ItemBlueprint.Object) {
-		BaseProjectile = (UClass*)ItemBlueprint.Object->GeneratedClass;
+	static ConstructorHelpers::FObjectFinder<UClass> ProjectileBPtoClass(TEXT("Class'/Game/Classes/Revenant/Blueprints/ProjectileBase.ProjectileBase_C'"));
+	if (ProjectileBPtoClass.Object) {
+		BaseProjectile = ProjectileBPtoClass.Object;
 	}
 }
 
@@ -314,6 +314,37 @@ void ABaseCharacter::DamageIndicatorTick() {
 		}
 	}
 }
+void ABaseCharacter::InitiateDamageNumberEffect(float Damage, ABaseCharacter * Target) {
+	if (this->HasAuthority()) {
+		InitiateDamageNumberEffectClient(Damage, Target);
+	}
+	else {
+		InitiateDamageNumberEffectServer(Damage, Target);
+	}
+}
+void ABaseCharacter::InitiateDamageNumberEffectServer_Implementation(float Damage, ABaseCharacter * Target) {
+	InitiateDamageNumberEffectClient(Damage, Target);
+}
+bool ABaseCharacter::InitiateDamageNumberEffectServer_Validate(float Damage, ABaseCharacter * Target) {
+	return true;
+}
+void ABaseCharacter::InitiateDamageNumberEffectClient_Implementation(float Damage, ABaseCharacter * Target) {
+	if (DamageDisplayConst) // Check if the Asset is assigned in the blueprint.
+	{
+		// Create the widget and store it.
+		DamageDisplay = CreateWidget<UDamageNumberDisplay>(UGameplayStatics::GetPlayerController(GetWorld(), 0), DamageDisplayConst);
+		DamageDisplay->Damage = Damage * 10;
+		DamageDisplay->Target = Target;
+
+		// Now you can use the widget directly since you have a reference for it.
+		// Extra check to  make sure the pointer holds the widget.
+		if (DamageDisplay)
+		{
+			//Add it to the view port
+			DamageDisplay->AddToViewport();
+		}
+	}
+}
 
 /*********************** HITBOX ***********************/
 void ABaseCharacter::FillHitboxArray() {
@@ -409,11 +440,6 @@ void ABaseCharacter::RollPressedEvent() {
 		IsBlocking = false;
 		Invincible = true;
 		HurtboxActive = false;
-		if (this->HasAuthority()) {
-			if (ResilienceDrainTimerHandle.IsValid() == true) {
-				GetWorld()->GetTimerManager().ClearTimer(ResilienceDrainTimerHandle);
-			}
-		}
 		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.45f, false);
 	}
 }
@@ -426,11 +452,6 @@ void ABaseCharacter::RollPressedEvent3() {
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}
-	if (this->HasAuthority()) {
-		if (ResilienceDrainTimerHandle.IsValid() == false) {
-			GetWorldTimerManager().SetTimer(ResilienceDrainTimerHandle, this, &ABaseCharacter::ResilienceDrainTimer, 1.0f, true);
-		}
-	}
 	if (CanAttack == false) {
 		CanAttack = true;
 	}
@@ -439,22 +460,7 @@ void ABaseCharacter::RollPressedEvent3() {
 
 /*********************** Movement ***********************/
 void ABaseCharacter::MovementHandler() {
-	if (this->HasAuthority()) {
-		MovementHandlerServer();
-	}
-	else {
-		MovementHandlerServer();
-		MovementHandlerClient();
-	}
-}
-void ABaseCharacter::MovementHandlerServer_Implementation() {
-	MovementHandlerClient();
-}
-bool ABaseCharacter::MovementHandlerServer_Validate() {
-	return true;
-}
-void ABaseCharacter::MovementHandlerClient() {
-	if (AttackCastCooldown > CurrentGameTime && IsRolling == false && IsSideStepping == false){
+	if (AttackCastCooldown > CurrentGameTime && IsRolling == false && IsSideStepping == false) {
 		if (this->HasAuthority()) {
 			CanMove = false;
 		}
@@ -530,7 +536,7 @@ void ABaseCharacter::BlockHandler() {
 			}
 		}
 		else {
-			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime && Resilience >= 20.0f) {
+			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime && Resilience >= 25.0f) {
 				IsBlocking = true;
 				if (BlockSubtractResilience == false) {
 					Resilience = UKismetMathLibrary::FClamp(Resilience - 20.0f, 0.0f, 100.0f);
@@ -575,12 +581,12 @@ bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
 }
 
 /*********************** ANIMATIONS ***********************/
-void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed, bool IsAttack) {
+void ABaseCharacter::PlayActionAnim(UAnimMontage* Animation, float Speed) {
 	if (this->HasAuthority()) {
-		PlayActionAnimServer(Animation, Speed, IsAttack);
+		PlayActionAnimServer(Animation, Speed);
 	}
 }
-void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed, bool IsAttack) {
+void ABaseCharacter::PlayActionAnimServer_Implementation(UAnimMontage* Animation, float Speed) {
 	if (this->GetMesh()->GetAnimInstance() != NULL)
 	{
 		this->GetMesh()->GetAnimInstance()->Montage_Play(Animation, Speed);
@@ -597,25 +603,6 @@ void ABaseCharacter::StopAnimations() {
 }
 void ABaseCharacter::StopAnimationsServer_Implementation() {
 	this->StopAnimMontage();
-}
-/* Wrapper for playing animations and displaying for client too */
-void ABaseCharacter::RelayAnimation(UAnimMontage* Animation, float Speed) {
-	if (this->HasAuthority()) {
-		RelayAnimationServer(Animation, Speed);
-	}
-	else {
-		RelayAnimationServer(Animation, Speed);
-		RelayAnimationClient(Animation, Speed);
-	}
-}
-void ABaseCharacter::RelayAnimationServer_Implementation(UAnimMontage* Animation, float Speed) {
-	RelayAnimationClient(Animation, Speed);
-}
-bool ABaseCharacter::RelayAnimationServer_Validate(UAnimMontage* Animation, float Speed) {
-	return true;
-}
-void ABaseCharacter::RelayAnimationClient(UAnimMontage* Animation, float Speed) {
-	PlayActionAnimServer(Animation, Speed, false);
 }
 // Play when PlayerCollision2 is overlapped
 void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
@@ -643,12 +630,17 @@ void ABaseCharacter::InitializeParticle_Implementation(TSubclassOf<AActor> Parti
 /* Flinch Handler */
 void ABaseCharacter::FlinchEventTrigger() {
 	if (FlinchTrigger == true) {
-		if (this->HasAuthority()) {
-			FlinchEventServer();
+		if (IsDead == false) {
+			if (this->HasAuthority()) {
+				FlinchEventServer();
+			}
+			else {
+				FlinchEventServer();
+				FlinchEvent();
+			}
 		}
 		else {
-			FlinchEventServer();
-			FlinchEvent();
+			FlinchTrigger = false;
 		}
 	}
 }
@@ -665,7 +657,7 @@ void ABaseCharacter::FlinchEvent() {
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
-		PlayActionAnim(FlinchAnimMontage, 1.1f, false);
+		PlayActionAnim(FlinchAnimMontage, 1.1f);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .7f, false);
 	}
 }
@@ -699,7 +691,7 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 		else { // Correctly blocked
 			FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
 			UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
-			Target->RelayAnimation(BlockRecoilMontage, 1.0f);
+			Target->PlayActionAnim(BlockRecoilMontage, 1.0f);
 			Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - (Damage / 2), 0.0f, 100.0f);
 			return false;
 		}
@@ -727,8 +719,11 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 	Health -= Damage;
 	ResilienceDefenseReplenish += Damage * 2.0f;
 	InitiateDamageEffect();
+	Attacker->InitiateDamageNumberEffect(Damage, this);
+	InitiateDamageNumberEffect(Damage, this);
 	Attacker->ComboAmount++;
 	SendEventToAttacker(Attacker);
+
 	if (DetectMode == true) {
 		DetectAction();
 	}
@@ -814,14 +809,18 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float
 		CanAttack = false;
 		CurrentAttackName = AttackName;
 		CurrentAttackType = AttackType;
-		PlayActionAnim(Animation, CastSpeed, true);
+		PlayActionAnim(Animation, CastSpeed);
 		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
-		if (AttackName == "HBasicAttack") {
+		if (AttackName == "HBasicAttack" && ComboAmount == 0) {
 			HBasicAttackSuperArmor = true;
 		}
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
 		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
+	}
+	else {
+		LastAttack = "Missed";
+		CurrentAttackHit = false;
 	}
 }
 void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {

@@ -61,6 +61,15 @@ public:
 	/** Called to bind functionality to input */
 		virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	/** Reset ability selected arrays */
+	UFUNCTION(BlueprintCallable)
+		void ResetSelectedAbilityArrays();
+	UFUNCTION(Server, Reliable, WithValidation)
+		void ResetSelectedAbilityArraysServer();
+	UFUNCTION()
+		void ResetSelectedAbilityArraysClient();
+
+
 	/** Add Remaining Inputs */
 	UFUNCTION(BlueprintCallable)
 		virtual void AddRemainingInputs() override;
@@ -70,6 +79,10 @@ public:
 
 	UFUNCTION()
 		void AddRemainingInputsClient();
+
+	/** Load Basic Attack Animations into their arrays */
+	UFUNCTION()
+		void LoadBasicAttackAnimations();
 
 	/** Gets random montage */
 	UFUNCTION()
