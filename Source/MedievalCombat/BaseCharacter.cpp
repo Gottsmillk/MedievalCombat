@@ -293,25 +293,23 @@ void ABaseCharacter::InitiateDamageEffectClient_Implementation() {
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->PlayerCameraManager->PlayCameraShake(PlayerTakeDamageCameraShake, UKismetMathLibrary::RandomFloatInRange(0.01f, 0.5f));
 }
 void ABaseCharacter::DamageIndicatorTick() {
-	if (this->IsLocallyControlled() == true) {
-		float TempVar1 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 50.0f, 1.0f, 0.0f);
-		float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
-		float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
-		FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
-		float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 0.1f, 3.0f, 0.0f);
-		float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
-		LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
-		const FName Power("Power");
-		UMaterialParameterCollection *TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/Blood/DamageIndicatorPower.DamageIndicatorPower"));
-		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Power, LowHealthIndicatorPower);
-		float TempVar6 = FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed);
-		CurrentDamageIndicator = TempVar6;
-		const FName Blood2Power("Blood2Power");
-		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Blood2Power, CurrentDamageIndicator);
-		if (UKismetMathLibrary::NearlyEqual_FloatFloat(CurrentDamageIndicator, FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed), 0.01f) == true) {
-			DesiredDamageIndicator = 0.0f;
-			DamageIndicatorSpeed = 3.0f;
-		}
+	float TempVar1 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 50.0f, 1.0f, 0.0f);
+	float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
+	float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
+	FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
+	float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 60.0f, 3.0f, 0.0f);
+	float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
+	LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
+	const FName Power("Power");
+	UMaterialParameterCollection *TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/DamageIndicators/DamageIndicatorPower.DamageIndicatorPower"));
+	UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Power, LowHealthIndicatorPower);
+	float TempVar6 = FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed);
+	CurrentDamageIndicator = TempVar6;
+	const FName Blood2Power("Blood2Power");
+	UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Blood2Power, CurrentDamageIndicator);
+	if (UKismetMathLibrary::NearlyEqual_FloatFloat(CurrentDamageIndicator, FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed), 0.01f) == true) {
+		DesiredDamageIndicator = 0.0f;
+		DamageIndicatorSpeed = 3.0f;
 	}
 }
 void ABaseCharacter::InitiateDamageNumberEffect(float Damage, ABaseCharacter * Target) {
