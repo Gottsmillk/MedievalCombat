@@ -216,7 +216,7 @@ public:
 		UCharacterMovementComponent* CharMovement;
 
 	// Returns the Camera Shake blueprint for the Damage Indicator
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CharacterInfo)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = CharacterInfo)
 		TSubclassOf <UCameraShake> PlayerTakeDamageCameraShake;
 
 	/* ************************ Projectile Variables ************************ */
@@ -244,7 +244,6 @@ public:
 
 
 	/* ********************* Damage Indicator Variables ********************* */
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
 		float CurrentDamageIndicator = 0;
 
@@ -533,18 +532,10 @@ public:
 	// Add Damage Effect
 	UFUNCTION()
 		void InitiateDamageEffect();
-	UFUNCTION(Server, Reliable, WithValidation)
-		void InitiateDamageEffectServer();
-	UFUNCTION(Client, Reliable)
-		void InitiateDamageEffectClient();
 
 	// Add Damage Number Effect
-	UFUNCTION()
+	UFUNCTION(NetMulticast, Reliable)
 		void InitiateDamageNumberEffect(float Damage, ABaseCharacter * Target);
-	UFUNCTION(Server, Reliable, WithValidation)
-		void InitiateDamageNumberEffectServer(float Damage, ABaseCharacter * Target);
-	UFUNCTION(Client, Reliable)
-		void InitiateDamageNumberEffectClient(float Damage, ABaseCharacter * Target);
 
 	/* ************************** Hitbox Functions ************************** */
 

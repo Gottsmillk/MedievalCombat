@@ -470,7 +470,7 @@ void ARevenant::AttackExecute(FString AttackName) {
 	}
 	else {
 		AttackExecuteServer(AttackName);
-		AttackExecuteClient(AttackName);
+		//AttackExecuteClient(AttackName);
 	}
 }
 void ARevenant::AttackExecuteServer_Implementation(const FString &AttackName) {

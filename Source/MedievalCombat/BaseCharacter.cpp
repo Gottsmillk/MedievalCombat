@@ -161,6 +161,16 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
+	DOREPLIFETIME(ABaseCharacter, PlayerTakeDamageCameraShake);
+
+	DOREPLIFETIME(ABaseCharacter, CurrentDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, MaxDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, MinDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, DesiredDamageIndicator);
+	DOREPLIFETIME(ABaseCharacter, DamageIndicatorSpeed);
+	DOREPLIFETIME(ABaseCharacter, LowHealthIndicatorPower);
+	DOREPLIFETIME(ABaseCharacter, DamageDeltaTime);
+
 	DOREPLIFETIME(ABaseCharacter, CurrentGameTime);
 
 	DOREPLIFETIME(ABaseCharacter, IsDead);
@@ -209,14 +219,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, DamageTable);
 
 	DOREPLIFETIME(ABaseCharacter, MenuUp);
-
-	DOREPLIFETIME(ABaseCharacter, CurrentDamageIndicator);
-	DOREPLIFETIME(ABaseCharacter, MaxDamageIndicator);
-	DOREPLIFETIME(ABaseCharacter, MinDamageIndicator);
-	DOREPLIFETIME(ABaseCharacter, DesiredDamageIndicator);
-	DOREPLIFETIME(ABaseCharacter, DamageIndicatorSpeed);
-	DOREPLIFETIME(ABaseCharacter, LowHealthIndicatorPower);
-	DOREPLIFETIME(ABaseCharacter, DamageDeltaTime);
 }
 
 // Called when the game starts or when spawned
@@ -274,20 +276,6 @@ void ABaseCharacter::WeaponVisibility(bool set) {
 }
 /*********************** DAMAGE INDICATOR ***********************/
 void ABaseCharacter::InitiateDamageEffect() {
-	if (this->HasAuthority()) {
-		InitiateDamageEffectClient();
-	}
-	else {
-		InitiateDamageEffectServer();
-	}
-}
-void ABaseCharacter::InitiateDamageEffectServer_Implementation() {
-	InitiateDamageEffectClient();
-}
-bool ABaseCharacter::InitiateDamageEffectServer_Validate() {
-	return true;
-}
-void ABaseCharacter::InitiateDamageEffectClient_Implementation() {
 	DamageIndicatorSpeed = 15.0f;
 	DesiredDamageIndicator = UKismetMathLibrary::FClamp(CurrentDamageIndicator + 1.0f, 0.0f, MaxDamageIndicator);
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->PlayerCameraManager->PlayCameraShake(PlayerTakeDamageCameraShake, UKismetMathLibrary::RandomFloatInRange(0.01f, 0.5f));
@@ -297,7 +285,7 @@ void ABaseCharacter::DamageIndicatorTick() {
 	float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
 	float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
 	FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
-	float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 60.0f, 3.0f, 0.0f);
+	float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 0.1f, 3.0f, 0.0f);
 	float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
 	LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
 	const FName Power("Power");
@@ -312,21 +300,7 @@ void ABaseCharacter::DamageIndicatorTick() {
 		DamageIndicatorSpeed = 3.0f;
 	}
 }
-void ABaseCharacter::InitiateDamageNumberEffect(float Damage, ABaseCharacter * Target) {
-	if (this->HasAuthority()) {
-		InitiateDamageNumberEffectClient(Damage, Target);
-	}
-	else {
-		InitiateDamageNumberEffectServer(Damage, Target);
-	}
-}
-void ABaseCharacter::InitiateDamageNumberEffectServer_Implementation(float Damage, ABaseCharacter * Target) {
-	InitiateDamageNumberEffectClient(Damage, Target);
-}
-bool ABaseCharacter::InitiateDamageNumberEffectServer_Validate(float Damage, ABaseCharacter * Target) {
-	return true;
-}
-void ABaseCharacter::InitiateDamageNumberEffectClient_Implementation(float Damage, ABaseCharacter * Target) {
+void ABaseCharacter::InitiateDamageNumberEffect_Implementation(float Damage, ABaseCharacter * Target) {
 	if (DamageDisplayConst) // Check if the Asset is assigned in the blueprint.
 	{
 		// Create the widget and store it.
@@ -717,7 +691,6 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 	Health -= Damage;
 	ResilienceDefenseReplenish += Damage * 2.0f;
 	InitiateDamageEffect();
-	Attacker->InitiateDamageNumberEffect(Damage, this);
 	InitiateDamageNumberEffect(Damage, this);
 	Attacker->ComboAmount++;
 	SendEventToAttacker(Attacker);
@@ -830,9 +803,7 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 			Hitbox->bGenerateOverlapEvents = true;
 		}
 		else if (Projectile == true) {
-			if (this->HasAuthority()) {
-				ProjectileHandler(AttackName);
-			}
+			ProjectileHandler(AttackName);
 		}
 	}
 	HBasicAttackSuperArmor = false;
