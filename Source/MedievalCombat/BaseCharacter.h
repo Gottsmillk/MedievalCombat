@@ -244,6 +244,9 @@ public:
 
 
 	/* ********************* Damage Indicator Variables ********************* */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = DamageIndicator)
+		UMaterialParameterCollection* TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/DamageIndicators/DamageIndicatorPower.DamageIndicatorPower"));
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
 		float CurrentDamageIndicator = 0;
 
@@ -529,8 +532,7 @@ public:
 	UFUNCTION()
 		void DamageIndicatorTick();
 
-	// Add Damage Effect
-	UFUNCTION()
+	UFUNCTION(Client, Reliable)
 		void InitiateDamageEffect();
 
 	// Add Damage Number Effect
@@ -713,9 +715,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 		virtual void AttackExecute(FString AttackName);
 	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void AttackExecuteServer(const FString &AttackName);
+		virtual void AttackExecuteClientToServer(const FString &AttackName);
 	UFUNCTION()
-		virtual void AttackExecuteClient(FString AttackName);
+		virtual void AttackExecuteServer(FString AttackName);
 
 	// Function for detecting when an attack is cast, used for stealth abilities
 	UFUNCTION()

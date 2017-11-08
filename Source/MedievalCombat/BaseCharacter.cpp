@@ -275,29 +275,30 @@ void ABaseCharacter::WeaponVisibility(bool set) {
 	Weapon->SetOnlyOwnerSee(set);
 }
 /*********************** DAMAGE INDICATOR ***********************/
-void ABaseCharacter::InitiateDamageEffect() {
+void ABaseCharacter::InitiateDamageEffect_Implementation() {
 	DamageIndicatorSpeed = 15.0f;
 	DesiredDamageIndicator = UKismetMathLibrary::FClamp(CurrentDamageIndicator + 1.0f, 0.0f, MaxDamageIndicator);
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->PlayerCameraManager->PlayCameraShake(PlayerTakeDamageCameraShake, UKismetMathLibrary::RandomFloatInRange(0.01f, 0.5f));
 }
 void ABaseCharacter::DamageIndicatorTick() {
-	float TempVar1 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 50.0f, 1.0f, 0.0f);
-	float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
-	float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
-	FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
-	float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 0.1f, 3.0f, 0.0f);
-	float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
-	LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
-	const FName Power("Power");
-	UMaterialParameterCollection *TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/DamageIndicators/DamageIndicatorPower.DamageIndicatorPower"));
-	UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Power, LowHealthIndicatorPower);
-	float TempVar6 = FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed);
-	CurrentDamageIndicator = TempVar6;
-	const FName Blood2Power("Blood2Power");
-	UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Blood2Power, CurrentDamageIndicator);
-	if (UKismetMathLibrary::NearlyEqual_FloatFloat(CurrentDamageIndicator, FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed), 0.01f) == true) {
-		DesiredDamageIndicator = 0.0f;
-		DamageIndicatorSpeed = 3.0f;
+	if (this->IsLocallyControlled() == true) {
+		float TempVar1 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 50.0f, 1.0f, 0.0f);
+		float TempVar2 = UKismetMathLibrary::FClamp(TempVar1, 0.0f, 1.0f);
+		float TempVar3 = UKismetMathLibrary::FClamp(CurrentDamageIndicator + TempVar2, 0.0f, 1.0f);
+		FollowCamera->SetPostProcessBlendWeight(UKismetMathLibrary::MapRangeUnclamped(TempVar3, 0.0f, 1.0f, 0.0f, 1.0f));
+		float TempVar4 = UKismetMathLibrary::MapRangeUnclamped(Health, 0.0f, 0.1f, 3.0f, 0.0f);
+		float TempVar5 = UKismetMathLibrary::FClamp(TempVar4, 0.0f, 3.0f);
+		LowHealthIndicatorPower = FMath::FInterpTo(LowHealthIndicatorPower, TempVar5, DamageDeltaTime, 2.0f);
+		const FName Power("Power");
+		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Power, LowHealthIndicatorPower);
+		float TempVar6 = FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed);
+		CurrentDamageIndicator = TempVar6;
+		const FName Blood2Power("Blood2Power");
+		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), TempParamCollection, Blood2Power, CurrentDamageIndicator);
+		if (UKismetMathLibrary::NearlyEqual_FloatFloat(CurrentDamageIndicator, FMath::FInterpTo(CurrentDamageIndicator, DesiredDamageIndicator, DamageDeltaTime, DamageIndicatorSpeed), 0.01f) == true) {
+			DesiredDamageIndicator = 0.0f;
+			DamageIndicatorSpeed = 3.0f;
+		}
 	}
 }
 void ABaseCharacter::InitiateDamageNumberEffect_Implementation(float Damage, ABaseCharacter * Target) {
@@ -721,12 +722,12 @@ void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 void ABaseCharacter::AttackExecute(FString AttackName) {
 
 }
-void ABaseCharacter::AttackExecuteServer_Implementation(const FString &AttackName) {
+void ABaseCharacter::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
 }
-bool ABaseCharacter::AttackExecuteServer_Validate(const FString &AttackName) {
+bool ABaseCharacter::AttackExecuteClientToServer_Validate(const FString &AttackName) {
 	return true;
 }
-void ABaseCharacter::AttackExecuteClient(FString AttackName) {
+void ABaseCharacter::AttackExecuteServer(FString AttackName) {
 }
 
 /** Function for detecting abilities */

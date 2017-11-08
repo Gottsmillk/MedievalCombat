@@ -466,20 +466,19 @@ void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 }
 void ARevenant::AttackExecute(FString AttackName) {
 	if (this->HasAuthority()) {
-		AttackExecuteClient(AttackName);
+		AttackExecuteServer(AttackName);
 	}
 	else {
-		AttackExecuteServer(AttackName);
-		//AttackExecuteClient(AttackName);
+		AttackExecuteClientToServer(AttackName);
 	}
 }
-void ARevenant::AttackExecuteServer_Implementation(const FString &AttackName) {
-	AttackExecuteClient(AttackName);
+void ARevenant::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
+	AttackExecuteServer(AttackName);
 }
-bool ARevenant::AttackExecuteServer_Validate(const FString &AttackName) {
+bool ARevenant::AttackExecuteClientToServer_Validate(const FString &AttackName) {
 	return true;
 }
-void ARevenant::AttackExecuteClient(FString AttackName) {
+void ARevenant::AttackExecuteServer(FString AttackName) {
 	// Standard Actions
 	if (AttackName == "BlockRelease") {
 		BlockReleasedEvent();

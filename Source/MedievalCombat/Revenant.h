@@ -105,10 +105,10 @@ public:
 		virtual void AttackExecute(FString AttackName) override;
 
 	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void AttackExecuteServer(const FString &AttackName) override;
+		virtual void AttackExecuteClientToServer(const FString &AttackName) override;
 
 	UFUNCTION()
-		virtual void AttackExecuteClient(FString AttackName) override;
+		virtual void AttackExecuteServer(FString AttackName) override;
 
 	/** Function for detecting abilities */
 	UFUNCTION()
