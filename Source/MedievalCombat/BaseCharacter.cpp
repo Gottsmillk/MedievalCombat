@@ -5,6 +5,7 @@
 #include "ProjectileBase.h"
 #include "UnrealNetwork.h"
 #include "UserWidget.h"
+#include "DoTComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -190,7 +191,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, BlockingAnim);
 	DOREPLIFETIME(ABaseCharacter, BlockSubtractResilience);
 
-	DOREPLIFETIME(ABaseCharacter, FlinchTrigger);
 	DOREPLIFETIME(ABaseCharacter, Flinched);
 	DOREPLIFETIME(ABaseCharacter, SuperArmor);
 	DOREPLIFETIME(ABaseCharacter, HBasicAttackSuperArmor);
@@ -211,7 +211,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, ResilienceRegenAmt);
 
 	DOREPLIFETIME(ABaseCharacter, AttackCastCooldown);
-	DOREPLIFETIME(ABaseCharacter, DamageOverTimeArray);
 	DOREPLIFETIME(ABaseCharacter, AttackArray);
 	DOREPLIFETIME(ABaseCharacter, ComboExtenderArray);
 	DOREPLIFETIME(ABaseCharacter, UtilityArray);
@@ -241,8 +240,6 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
 	DamageIndicatorTick(); // Handles displaying the damage indicator
-	FlinchEventTrigger(); // Applies flinching when player is attacked
-	TrackDamageOverTime(); // Tracks Damage over Time
 	CurrentGameTime = UKismetSystemLibrary::GetGameTimeInSeconds(this->GetWorld());
 	if (IsDead == true && this->bUseControllerRotationYaw == 0) {
 		this->bUseControllerRotationYaw = 1;
@@ -408,7 +405,6 @@ void ABaseCharacter::RollPressedEvent() {
 		IsRolling = true;
 		RollMovement = true;
 		MakeCurrentActionLastAction("Roll");
-		FlinchTrigger = false;
 		Flinched = false;
 		IsBlocking = false;
 		Invincible = true;
@@ -581,6 +577,7 @@ void ABaseCharacter::StopAnimationsServer_Implementation() {
 void ABaseCharacter::PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
 	if (OtherActor != this) {
 		Overlapping = true;
+		CheckMoveDuringAttack();
 	}
 }
 void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {
@@ -601,31 +598,8 @@ void ABaseCharacter::InitializeParticle_Implementation(TSubclassOf<AActor> Parti
 
 /*********************** EVENTS UPON TAKING DAMAGE ***********************/
 /* Flinch Handler */
-void ABaseCharacter::FlinchEventTrigger() {
-	if (FlinchTrigger == true) {
-		if (IsDead == false) {
-			if (this->HasAuthority()) {
-				FlinchEventServer();
-			}
-			else {
-				FlinchEventServer();
-				FlinchEvent();
-			}
-		}
-		else {
-			FlinchTrigger = false;
-		}
-	}
-}
-void ABaseCharacter::FlinchEventServer_Implementation() {
-	FlinchEvent();
-}
-bool ABaseCharacter::FlinchEventServer_Validate() {
-	return true;
-}
 void ABaseCharacter::FlinchEvent() {
 	if (Health > 0 && SuperArmor == false && HBasicAttackSuperArmor == false) {
-		FlinchTrigger = false;
 		StopAnimations();
 		Flinched = true;
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
@@ -645,18 +619,20 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
 		HurtboxActive = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
-		InflictDamage(AttackedTarget, CurrentDamage, true, true);
+		InflictDamage(AttackedTarget, CurrentDamage, true, true, false);
 	}
 }
-bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches) {
+bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches, bool DoT) {
 	if (Target->Invincible == false) {
 		if (Target->IsBlocking != true || GetPlayerDirections(Target) == false || BlockCheck == false) { // Incorrectly blocked
+			if (DoT == false) {
+				AttackEffect(Target, CurrentAttackName);
+			}
 			CurrentAttackHit = true;
 			ResilienceAttackReplenish += Damage;
-			AttackEffect(Target, CurrentAttackName);
 			Target->IsBlocking = false;
 			if (Flinches == true) {
-				Target->FlinchTrigger = true;
+				Target->FlinchEvent();
 			}
 			Target->ApplyDamage(Damage, this);
 			return true;
@@ -703,14 +679,16 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 		ServerDeath();
 	}
 }
-void ABaseCharacter::ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt) {
-	FDamageOverTime tempMod;
-	tempMod.Type = Type;
-	tempMod.DamageAmt = DamageAmt;
-	tempMod.TicksLeft = Amount;
-	tempMod.LastTick = CurrentGameTime + StartDelay;
-	tempMod.IncrementAmt = IncrementAmt;
-	DamageOverTimeArray.Add(tempMod);
+void ABaseCharacter::ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt, ABaseCharacter* Attacker) {
+	UDoTComponent* PoisonBladeDoT = NewObject<UDoTComponent>(this);
+	PoisonBladeDoT->RegisterComponent();
+	PoisonBladeDoT->Type = Type;
+	PoisonBladeDoT->DamageAmt = DamageAmt;
+	PoisonBladeDoT->TicksLeft = Amount;
+	PoisonBladeDoT->InitialDelay = StartDelay;
+	PoisonBladeDoT->IncrementAmt = IncrementAmt;
+	PoisonBladeDoT->InitializeDelay();
+	PoisonBladeDoT->Attacker = Attacker;
 }
 /** Apply override so player who received damage can send events to player who dealt damage */
 void ABaseCharacter::SendEventToAttacker(ABaseCharacter* Attacker) {
@@ -771,16 +749,20 @@ void ABaseCharacter::RespawnEvent()
 	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
 	Health = 100;
 	IsDead = false;
+	MenuUp = false;
+	CanAttack = true;
+	Flinched = false;
+	AttackCastCooldown = 0.0f;
 }
 
 /*********************** ATTACKING ***********************/
 /** Attack Handler */
 void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, GetCooldownAmt(AttackName)) == true && MenuUp == false && CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
-		CheckMoveDuringAttack();
 		CanAttack = false;
 		CurrentAttackName = AttackName;
 		CurrentAttackType = AttackType;
+		CheckMoveDuringAttack();
 		PlayActionAnim(Animation, CastSpeed);
 		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
 		if (AttackName == "HBasicAttack" && ComboAmount == 0) {
@@ -865,7 +847,6 @@ void ABaseCharacter::ProjectileHandler(FString AttackName) {
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
 	if (Overlapping == true) {
-
 		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
 		RV_TraceParams.bTraceComplex = true;
 		RV_TraceParams.bTraceAsyncScene = true;
@@ -1085,28 +1066,4 @@ float ABaseCharacter::CalcFinalDamage(float Damage) {
 		}
 	}
 	return Damage * (TotalAttackMods/TotalDefenseMods);
-}
-/*********************** DAMAGE EFFECTS ***********************/
-/* Track Damage over Time */
-void ABaseCharacter::TrackDamageOverTime() {
-	for (int i = 0; i < DamageOverTimeArray.Num(); i++) {
-		if (DamageOverTimeArray[i].TicksLeft <= 0) {
-			DamageOverTimeArray.RemoveAt(i, 1, true);
-			i--;
-			continue;
-		}
-		if (DamageOverTimeArray[i].LastTick <= CurrentGameTime) {
-			if (DamageOverTimeArray[i].Type == "FlinchOnLast") {
-
-				if (DamageOverTimeArray[i].TicksLeft == 1) { // Last tick
-					InflictDamage(this, DamageOverTimeArray[i].DamageAmt, false, true);
-				}
-				else {
-					InflictDamage(this, DamageOverTimeArray[i].DamageAmt, false, false);
-				}
-			}
-			DamageOverTimeArray[i].TicksLeft--;
-			DamageOverTimeArray[i].LastTick = CurrentGameTime + DamageOverTimeArray[i].IncrementAmt;
-		}
-	}
 }

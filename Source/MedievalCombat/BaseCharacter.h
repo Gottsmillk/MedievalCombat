@@ -4,37 +4,11 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "DamageNumberDisplay.h"
+#include "DoTComponent.h"
 #include "ProjectileBase.h"
 #include "BaseCharacter.generated.h"
 
 /* ------------------------------------ STRUCTS ----------------------------------- */
-
-USTRUCT(BlueprintType)
-struct FDamageOverTime {
-	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FString Type;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float DamageAmt;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int TicksLeft;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float LastTick;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float IncrementAmt;
-
-	FDamageOverTime(FString Type2 = "", float DamageAmt2 = 0.0f, int TicksLeft2 = 0, float LastTick2 = 0.0f, float IncrementAmt2 = 0.0f) {
-		Type = Type2;
-		DamageAmt = DamageAmt2;
-		TicksLeft = TicksLeft2;
-		LastTick = LastTick2;
-		IncrementAmt = IncrementAmt2;
-	}
-};
 
 USTRUCT(BlueprintType)
 struct FSpeedModifierStruct {
@@ -288,10 +262,6 @@ public:
 
 	/* ************************** Flinch Variables *************************** */
 
-	// Whether or not to initiate a flinching event to player
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
-		bool FlinchTrigger = false;
-
 	// Whether or not the player is currently flinching
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
 		bool Flinched = false;
@@ -331,10 +301,6 @@ public:
 	// Array that stores damage values of attacks that have static damage
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
 		TArray<FDamageTableStruct> DamageTable;
-
-	// Array that stores damage over time events
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
-		TArray<FDamageOverTime> DamageOverTimeArray;
 
 	// Array that stores buff values
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
@@ -552,11 +518,7 @@ public:
 	/* ************************** Flinch Functions ************************** */
 
 	// Flinch Event
-	UFUNCTION()
-		void FlinchEventTrigger();
-	UFUNCTION(Server, Reliable, WithValidation)
-		void FlinchEventServer();
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void FlinchEvent();
 	UFUNCTION()
 		void FlinchEvent2();
@@ -569,7 +531,7 @@ public:
 
 	// Deal Damage to player
 	UFUNCTION(BlueprintCallable)
-		bool InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches);
+		bool InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches, bool DoT);
 	UFUNCTION(BlueprintCallable)
 		void ApplyDamage(float Damage, ABaseCharacter * Attacker);
 
@@ -583,11 +545,7 @@ public:
 
 	// Deal damage over time to player
 	UFUNCTION(BlueprintCallable)
-		void ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt);
-
-	// Track damage over time
-	UFUNCTION()
-		void TrackDamageOverTime();
+		void ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt, ABaseCharacter* Attacker);
 
 	// Add Damage buff/debuff
 	UFUNCTION(BlueprintCallable)

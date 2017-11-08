@@ -405,7 +405,7 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 	{
 		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), true, true);
+		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), true, true, false);
 	}
 }
 void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
@@ -416,10 +416,10 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 
 		if (CurrentAttackName == "StaggeringKick") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true);
+			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true, false);
 		}
 		else if (CurrentAttackName == "DebilitatingKick") {
-			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true) == true) {
+			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true, false) == true) {
 				AttackedTarget->SetCooldown("Roll", 1.5f);
 			}
 		}
@@ -431,7 +431,7 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 	{
 		PoweredBashHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(3 + (ComboAmount * 2.0f)), true, true);
+		InflictDamage(AttackedTarget, CalcFinalDamage(3 + (ComboAmount * 2.0f)), true, true, false);
 	}
 }
 
@@ -461,7 +461,7 @@ void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 		Target->LaunchCharacter(TempVector, true, true);
 	}
 	else if (AttackName == "PoisonBlade") {
-		Target->ApplyDamageOverTime("FlinchOnLast", CalcFinalDamage(2.5f), 5, 2.0f, 1.0f);
+		Target->ApplyDamageOverTime("FlinchOnLast", 2.5f, 5, 2.0f, 1.0f, this);
 	}
 }
 void ARevenant::AttackExecute(FString AttackName) {
