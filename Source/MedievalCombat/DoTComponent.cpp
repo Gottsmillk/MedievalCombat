@@ -44,10 +44,10 @@ void UDoTComponent::StartDoT() {
 	if (TicksLeft > 0 && InflictedOwner->IsDead == false) {
 		if (Type == "FlinchOnLast") {
 			if (TicksLeft > 1) {
-				InflictedOwner->InflictDamage(InflictedOwner, Attacker->CalcFinalDamage(DamageAmt), false, false, true);
+				InflictedOwner->InflictDamage(InflictedOwner, DamageAmt, false, false, true);
 			}
 			else if (TicksLeft == 1) { // Last tick
-				InflictedOwner->InflictDamage(InflictedOwner, Attacker->CalcFinalDamage(DamageAmt), false, true, true);
+				InflictedOwner->InflictDamage(InflictedOwner, DamageAmt, false, true, true);
 			}
 			TicksLeft--;
 		}

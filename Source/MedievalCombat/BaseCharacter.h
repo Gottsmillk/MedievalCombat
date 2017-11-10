@@ -4,7 +4,6 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "DamageNumberDisplay.h"
-#include "DoTComponent.h"
 #include "ProjectileBase.h"
 #include "BaseCharacter.generated.h"
 
@@ -332,7 +331,7 @@ public:
 
 	// Keeps track of regen rate of resilience per second
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceRegenAmt = 5.0;
+		float ResilienceRegenAmt = 10.0;
 
 	// Keeps track of how much resilience to replenish the attacker after a combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
@@ -561,7 +560,7 @@ public:
 
 	// Calculate final damage value based on damage and defense buffs/debuffs
 	UFUNCTION(BlueprintCallable)
-		float CalcFinalDamage(float Damage);
+		float CalcFinalDamage(float Damage, ABaseCharacter* Target);
 
 	// Events fired when a character dies
 	UFUNCTION(BlueprintCallable)
@@ -604,6 +603,10 @@ public:
 	// Event for resilience drain
 	UFUNCTION()
 		void ResilienceDrainTimer();
+
+	// Event replenishing resilience after combos
+	UFUNCTION()
+		void ResilienceReplenishEvent();
 
 	/* ************************** Block Functions *************************** */
 
@@ -727,6 +730,11 @@ protected:
 	// Timer channels
 	FTimerHandle ResilienceRegenTimerHandle;
 	FTimerHandle ResilienceDrainTimerHandle;
+	FTimerHandle FlinchDelayTimerHandle;
+	FTimerHandle AttackDelayTimerHandle;
+	FTimerHandle DeathDelayTimerHandle;
+	FTimerHandle SideStepDelayTimerHandle;
+	FTimerHandle RollDelayTimerHandle;
 	FTimerHandle delayTimerHandle;
 	
 private:

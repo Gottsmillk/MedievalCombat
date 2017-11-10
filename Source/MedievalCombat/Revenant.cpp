@@ -405,7 +405,7 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 	{
 		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), true, true, false);
+		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
 	}
 }
 void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
@@ -416,10 +416,10 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 
 		if (CurrentAttackName == "StaggeringKick") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true, false);
+			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), false, true, false);
 		}
 		else if (CurrentAttackName == "DebilitatingKick") {
-			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName)), false, true, false) == true) {
+			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false) == true) {
 				AttackedTarget->SetCooldown("Roll", 1.5f);
 			}
 		}
@@ -431,14 +431,14 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 	{
 		PoweredBashHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(3 + (ComboAmount * 2.0f)), true, true, false);
+		InflictDamage(AttackedTarget, CalcFinalDamage(3 + (ComboAmount * 2.0f), AttackedTarget), true, true, false);
 	}
 }
 
 /** Apply override so player who received damage can send events to player who dealt damage */
 void ARevenant::SendEventToAttacker(ABaseCharacter* Attacker) {
 	if (ImpairActive == true) {
-		Attacker->AddCooldownModifier(1.5f, Attacker->CurrentAttackName, 1.0f);
+		Attacker->AddCooldownModifier(1.0f, Attacker->CurrentAttackName, 1.0f);
 		ImpairActive = false;
 	}
 }
@@ -470,6 +470,7 @@ void ARevenant::AttackExecute(FString AttackName) {
 	}
 	else {
 		AttackExecuteClientToServer(AttackName);
+		//AttackExecuteServer(AttackName);
 	}
 }
 void ARevenant::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
@@ -491,7 +492,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 	}
 	// Utilities
 	else if (AttackName == "ShadowStance") {
-		if (Flinched == false && CanAttack == true && MenuUp == false && IsRolling == false && IsSideStepping == false && GetCooldown(AttackName) <= CurrentGameTime&& this->GetMovementComponent()->IsMovingOnGround() == true) {
+		if (Flinched == false && CanAttack == true && MenuUp == false && IsRolling == false && IsSideStepping == false && GetCooldown(AttackName) <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
 			DetectMode = true;
 			if (this->HasAuthority()) {
 				FActorSpawnParameters SpawnParameters;
@@ -526,7 +527,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				InitializeParticle(UnwaverFX);
 			}
 			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
-			GetWorldTimerManager().SetTimer(delay3TimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.0f, false);
+			GetWorldTimerManager().SetTimer(UnwaverDelayTimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.0f, false);
 		}
 	}
 	else if (AttackName == "Impair") {
@@ -536,7 +537,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 			}
 			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 			ImpairActive = true;
-			GetWorldTimerManager().SetTimer(delay3TimerHandle, this, &ARevenant::RemoveImpairActive, 1.0f, false);
+			GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 1.0f, false);
 		}
 	}
 	else if (AttackName == "Fortify") {
@@ -931,7 +932,7 @@ float ARevenant::SetAttackCooldownAmt(FString AttackName) {
 		return 13.0f;
 	}
 	else if (AttackName == "Impair") {
-		return 10.0f;
+		return 13.0f;
 	}
 	else if (AttackName == "Fortify") {
 		return 10.0f;
@@ -960,7 +961,7 @@ void ARevenant::TurnInvisibleRepAll_Implementation()
 	Shield->SetOnlyOwnerSee(true);
 	WeaponVisibility(true);
 	HPOverhead->SetVisibility(false);
-	GetWorldTimerManager().SetTimer(delay2TimerHandle, this, &ARevenant::DetectAction, 2.0f, false);
+	GetWorldTimerManager().SetTimer(InvisibilityDelayTimerHandle, this, &ARevenant::DetectAction, 2.0f, false);
 }
 /** Function for detecting abilities */
 void ARevenant::DetectAction() {

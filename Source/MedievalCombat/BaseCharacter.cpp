@@ -240,19 +240,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
 	DamageIndicatorTick(); // Handles displaying the damage indicator
-	CurrentGameTime = UKismetSystemLibrary::GetGameTimeInSeconds(this->GetWorld());
-	if (IsDead == true && this->bUseControllerRotationYaw == 0) {
-		this->bUseControllerRotationYaw = 1;
-	}
-	if (AttackCastCooldown <= CurrentGameTime && ComboAmount > 0) {
-		ComboAmount = 0;
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
-		ResilienceAttackReplenish = 0.0f;
-	}
-	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
-		ResilienceDefenseReplenish = 0.0f;
-	}
+	ResilienceReplenishEvent(); // Handles replenishing Resilience after combos end
+	//CurrentGameTime = UKismetSystemLibrary::GetGameTimeInSeconds(this->GetWorld());
 }
 
 // Input
@@ -374,7 +363,17 @@ void ABaseCharacter::ResilienceDrainTimer() {
 		Resilience = UKismetMathLibrary::FClamp(Resilience - ResilienceDrainAmt, 0, 100);
 	}
 }
-
+void ABaseCharacter::ResilienceReplenishEvent() {
+	if (AttackCastCooldown <= CurrentGameTime && ComboAmount > 0) {
+		ComboAmount = 0;
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
+		ResilienceAttackReplenish = 0.0f;
+	}
+	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
+		ResilienceDefenseReplenish = 0.0f;
+	}
+}
 /*********************** ROLL ***********************/
 void ABaseCharacter::SideStepPressedEvent() {
 	if (MenuUp == false && Flinched == false && (CanAttack == true || CurrentAttackName == "SBasicAttack") && IsDead == false && IsRolling == false && IsSideStepping == false && GetCooldown("SideStep") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
@@ -385,7 +384,7 @@ void ABaseCharacter::SideStepPressedEvent() {
 		Invincible = true;
 		HurtboxActive = false;
 		SetCooldown("SideStep", GetCooldownAmt("SideStep"));
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent2, 0.3f, false);
+		GetWorldTimerManager().SetTimer(SideStepDelayTimerHandle, this, &ABaseCharacter::SideStepPressedEvent2, 0.3f, false);
 	}
 }
 void ABaseCharacter::SideStepPressedEvent2() {
@@ -409,12 +408,12 @@ void ABaseCharacter::RollPressedEvent() {
 		IsBlocking = false;
 		Invincible = true;
 		HurtboxActive = false;
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.45f, false);
+		GetWorldTimerManager().SetTimer(RollDelayTimerHandle, this, &ABaseCharacter::RollPressedEvent2, 0.45f, false);
 	}
 }
 void ABaseCharacter::RollPressedEvent2() {
 	RollMovement = false;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RollPressedEvent3, 0.15f, false);
+	GetWorldTimerManager().SetTimer(RollDelayTimerHandle, this, &ABaseCharacter::RollPressedEvent3, 0.15f, false);
 }
 void ABaseCharacter::RollPressedEvent3() {
 	IsRolling = false;
@@ -505,10 +504,10 @@ void ABaseCharacter::BlockHandler() {
 			}
 		}
 		else {
-			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime && Resilience >= 25.0f) {
+			if (IsBlocking == false && GetCooldown("BlockPress") <= CurrentGameTime && Resilience >= 15.0f) {
 				IsBlocking = true;
 				if (BlockSubtractResilience == false) {
-					Resilience = UKismetMathLibrary::FClamp(Resilience - 20.0f, 0.0f, 100.0f);
+					Resilience = UKismetMathLibrary::FClamp(Resilience - 10.0f, 0.0f, 100.0f);
 					BlockSubtractResilience = true;
 				}
 				if (this->HasAuthority()) {
@@ -605,7 +604,7 @@ void ABaseCharacter::FlinchEvent() {
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
 		PlayActionAnim(FlinchAnimMontage, 1.1f);
-		GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .7f, false);
+		GetWorldTimerManager().SetTimer(FlinchDelayTimerHandle, this, &ABaseCharacter::FlinchEvent2, .7f, false);
 	}
 }
 void ABaseCharacter::FlinchEvent2() {
@@ -634,7 +633,7 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 			if (Flinches == true) {
 				Target->FlinchEvent();
 			}
-			Target->ApplyDamage(Damage, this);
+			Target->ApplyDamage(CalcFinalDamage(Damage, Target), this);
 			return true;
 		}
 		else { // Correctly blocked
@@ -735,10 +734,10 @@ void ABaseCharacter::ServerDeathRepAll_Implementation()
 	CurrentLRLoc = 0;
 	IsRolling = false;
 	IsSideStepping = false;
+	this->bUseControllerRotationYaw = 0;
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
 	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
-	this->bUseControllerRotationYaw = 0;
-	GetWorldTimerManager().SetTimer(delayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
+	GetWorldTimerManager().SetTimer(DeathDelayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
 }
 // Respawn
 void ABaseCharacter::RespawnEvent()
@@ -753,6 +752,7 @@ void ABaseCharacter::RespawnEvent()
 	CanAttack = true;
 	Flinched = false;
 	AttackCastCooldown = 0.0f;
+	this->bUseControllerRotationYaw = 1;
 }
 
 /*********************** ATTACKING ***********************/
@@ -770,7 +770,7 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float
 		}
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
-		GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, DelayBeforeHitbox, false);
+		GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, DelayBeforeHitbox, false);
 	}
 	else {
 		LastAttack = "Missed";
@@ -789,11 +789,11 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 			ProjectileHandler(AttackName);
 		}
 	}
+	CurrentDamage = Damage;
 	HBasicAttackSuperArmor = false;
-	CurrentDamage = CalcFinalDamage(Damage);
 	FTimerDelegate TimerDel;
 	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, CastCooldownAmt, UseHitbox, Hitbox);
-	GetWorldTimerManager().SetTimer(delayTimerHandle, TimerDel, LengthOfHitbox, false);
+	GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, LengthOfHitbox, false);
 }
 void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
 	MakeCurrentActionLastAction(AttackType);
@@ -1030,7 +1030,7 @@ void ABaseCharacter::AddDefenseModifier(float Modifier, float Duration, int NumH
 	tempMod.NumHits = NumHits;
 	DefenseModifierArray.Add(tempMod);
 }
-float ABaseCharacter::CalcFinalDamage(float Damage) {
+float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 	float TotalAttackMods = 1.0f;
 	float TotalDefenseMods = 1.0f;
 	for (int i = 0; i < AttackModifierArray.Num(); i++) {
@@ -1049,19 +1049,19 @@ float ABaseCharacter::CalcFinalDamage(float Damage) {
 			i--;
 		}
 	}
-	for (int i = 0; i < DefenseModifierArray.Num(); i++) {
-		if (DefenseModifierArray[i].Cooldown > CurrentGameTime) {
-			if (DefenseModifierArray[i].NumHits > 0) {
-				TotalDefenseMods += (DefenseModifierArray[i].Modifier);
-				DefenseModifierArray[i].NumHits--;
+	for (int i = 0; i < Target->DefenseModifierArray.Num(); i++) {
+		if (Target->DefenseModifierArray[i].Cooldown > CurrentGameTime) {
+			if (Target->DefenseModifierArray[i].NumHits > 0) {
+				TotalDefenseMods += (Target->DefenseModifierArray[i].Modifier);
+				Target->DefenseModifierArray[i].NumHits--;
 			}
 			else {
-				DefenseModifierArray.RemoveAt(i, 1, true);
+				Target->DefenseModifierArray.RemoveAt(i, 1, true);
 				i--;
 			}
 		}
 		else {
-			DefenseModifierArray.RemoveAt(i, 1, true);
+			Target->DefenseModifierArray.RemoveAt(i, 1, true);
 			i--;
 		}
 	}

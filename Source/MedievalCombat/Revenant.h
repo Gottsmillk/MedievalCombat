@@ -149,7 +149,7 @@ protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
 
-	FTimerHandle delay2TimerHandle;
-	FTimerHandle delay3TimerHandle;
-	FTimerHandle delay4TimerHandle;
+	FTimerHandle InvisibilityDelayTimerHandle;
+	FTimerHandle UnwaverDelayTimerHandle;
+	FTimerHandle ImpairDelayTimerHandle;
 };
