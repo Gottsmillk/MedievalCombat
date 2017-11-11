@@ -545,7 +545,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 			if (DetectMode == false) {
 				InitializeParticle(FortifyFX);
 			}
-			AddDefenseModifier(1.0f, 1.0f, 99);
+			AddDefenseModifier(3.0f, 1.0f, 99);
 			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 		}
 	}
@@ -929,13 +929,13 @@ float ARevenant::SetAttackCooldownAmt(FString AttackName) {
 		return 14.0f;
 	}
 	else if (AttackName == "Unwaver") {
-		return 13.0f;
+		return 18.0f;
 	}
 	else if (AttackName == "Impair") {
 		return 13.0f;
 	}
 	else if (AttackName == "Fortify") {
-		return 10.0f;
+		return 11.0f;
 	}
 	else if (AttackName == "PoweredBash") {
 		return 20.0f;

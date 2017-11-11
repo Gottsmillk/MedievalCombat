@@ -369,10 +369,6 @@ void ABaseCharacter::ResilienceReplenishEvent() {
 		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
 		ResilienceAttackReplenish = 0.0f;
 	}
-	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
-		ResilienceDefenseReplenish = 0.0f;
-	}
 }
 /*********************** ROLL ***********************/
 void ABaseCharacter::SideStepPressedEvent() {
@@ -612,6 +608,10 @@ void ABaseCharacter::FlinchEvent2() {
 		Flinched = false;
 	}
 	CanAttack = true;
+	if (ResilienceDefenseReplenish > 0.0f) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
+		ResilienceDefenseReplenish = 0.0f;
+	}
 }
 /** When a hitbox is triggered and a weapon hit */
 void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
@@ -624,9 +624,6 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches, bool DoT) {
 	if (Target->Invincible == false) {
 		if (Target->IsBlocking != true || GetPlayerDirections(Target) == false || BlockCheck == false) { // Incorrectly blocked
-			if (DoT == false) {
-				AttackEffect(Target, CurrentAttackName);
-			}
 			CurrentAttackHit = true;
 			ResilienceAttackReplenish += Damage;
 			Target->IsBlocking = false;
@@ -634,6 +631,9 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 				Target->FlinchEvent();
 			}
 			Target->ApplyDamage(CalcFinalDamage(Damage, Target), this);
+			if (DoT == false) {
+				AttackEffect(Target, CurrentAttackName);
+			}
 			return true;
 		}
 		else { // Correctly blocked
@@ -670,7 +670,10 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 	InitiateDamageNumberEffect(Damage, this);
 	Attacker->ComboAmount++;
 	SendEventToAttacker(Attacker);
-
+	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
+		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
+		ResilienceDefenseReplenish = 0.0f;
+	}
 	if (DetectMode == true) {
 		DetectAction();
 	}

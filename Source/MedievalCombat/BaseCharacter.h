@@ -331,7 +331,7 @@ public:
 
 	// Keeps track of regen rate of resilience per second
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceRegenAmt = 10.0;
+		float ResilienceRegenAmt = 5.0;
 
 	// Keeps track of how much resilience to replenish the attacker after a combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
