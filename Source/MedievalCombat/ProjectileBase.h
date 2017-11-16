@@ -28,4 +28,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		FVector ProjectileStartLoc;
+
+	UFUNCTION(BlueprintCallable)
+		void SetFX();
 };

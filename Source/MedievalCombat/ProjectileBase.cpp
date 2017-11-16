@@ -26,3 +26,8 @@ void AProjectileBase::Tick(float DeltaTime)
 
 }
 
+void AProjectileBase::SetFX()
+{
+	FOutputDeviceNull ar;
+	this->CallFunctionByNameWithArguments(TEXT("CallFunctionTest"), ar, NULL, true);
+}

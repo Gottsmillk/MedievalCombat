@@ -182,6 +182,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
 		float YSensitivity = 0.5f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
+		TSubclassOf<AActor> BlockedFX;
+
 	/* *************** Variables loaded from child blueprint **************** */
 
 	// Returns the custom Character Movement component provided by Advanced Locomotion plugin
@@ -459,7 +462,7 @@ public:
 
 	// Create Particle Effects
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void InitializeParticle(TSubclassOf<AActor> Particle);
+		void InitializeParticle(TSubclassOf<AActor> Particle, FVector Location, bool Bind);
 
 	/* *********************** Projectile Functions ************************* */
 

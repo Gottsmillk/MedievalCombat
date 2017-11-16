@@ -154,6 +154,12 @@ ABaseCharacter::ABaseCharacter()
 	if (ProjectileBPtoClass.Object) {
 		BaseProjectile = ProjectileBPtoClass.Object;
 	}
+
+	// Set BlockedFX to be spawned
+	static ConstructorHelpers::FObjectFinder<UClass> BlockedFXBlueprint(TEXT("Class'/Game/Blueprints/Particles/Blueprints/BlockFX.BlockFX_C'"));
+	if (BlockedFXBlueprint.Object) {
+		BlockedFX = BlockedFXBlueprint.Object;
+	}
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -416,7 +422,7 @@ void ABaseCharacter::RollPressedEvent3() {
 	if (IsRolling == false && IsSideStepping == false) {
 		Invincible = false;
 	}
-	if (CanAttack == false) {
+	if (CanAttack == false && IsDead == false) {
 		CanAttack = true;
 	}
 	AttackCastCooldown = 0.0f;
@@ -583,12 +589,14 @@ void ABaseCharacter::PlayerCollision2End(class UPrimitiveComponent* OverlappingC
 }
 
 /*********************** PARTICLE EFFECTS ***********************/
-void ABaseCharacter::InitializeParticle_Implementation(TSubclassOf<AActor> Particle) {
+void ABaseCharacter::InitializeParticle_Implementation(TSubclassOf<AActor> Particle, FVector Location, bool Bind) {
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.Instigator = this;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AActor * SpawnedActor = (GetWorld()->SpawnActor<AActor>(Particle, GetMesh()->K2_GetComponentLocation(), GetMesh()->K2_GetComponentRotation(), SpawnParameters));
-	SpawnedActor->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false));
+	AActor * SpawnedActor = (GetWorld()->SpawnActor<AActor>(Particle, Location, GetMesh()->K2_GetComponentRotation(), SpawnParameters));
+	if (Bind == true) {
+		SpawnedActor->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false));
+	}
 }
 
 /*********************** EVENTS UPON TAKING DAMAGE ***********************/
@@ -637,10 +645,12 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 			return true;
 		}
 		else { // Correctly blocked
+			StopAnimations();
 			FName Path = TEXT("/Game/Classes/Revenant/Animations/Recoil/Shield_Block_Recoil_Montage.Shield_Block_Recoil_Montage");
 			UAnimMontage *BlockRecoilMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *Path.ToString()));
 			Target->PlayActionAnim(BlockRecoilMontage, 1.0f);
 			Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - (Damage / 2), 0.0f, 100.0f);
+			Target->InitializeParticle(BlockedFX, GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket"))), false);
 			return false;
 		}
 	}
@@ -733,6 +743,7 @@ bool ABaseCharacter::ServerDeathServer_Validate() {
 void ABaseCharacter::ServerDeathRepAll_Implementation()
 {
 	IsDead = true;
+	Invincible = true;
 	CurrentFBLoc = 0;
 	CurrentLRLoc = 0;
 	IsRolling = false;
@@ -754,6 +765,7 @@ void ABaseCharacter::RespawnEvent()
 	MenuUp = false;
 	CanAttack = true;
 	Flinched = false;
+	Invincible = false;
 	AttackCastCooldown = 0.0f;
 	this->bUseControllerRotationYaw = 1;
 }
@@ -807,7 +819,7 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, floa
 	HurtboxActive = false;
 	CurrentDamage = 0.0f;
 	CurrentAttackHit = false;
-	if (Flinched == false) {
+	if (Flinched == false && IsDead == false) {
 		CanAttack = true;
 	}
 	SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
@@ -837,6 +849,7 @@ void ABaseCharacter::ProjectileHandler(FString AttackName) {
 			AProjectileBase * ProjectileLaunched = (GetWorld()->SpawnActor<AProjectileBase>(BaseProjectile, GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket"))), UKismetMathLibrary::MakeRotFromX(Out_Hit.ImpactPoint - GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket")))), SpawnParameters));
 			ProjectileLaunched->ProjectileName = AttackName;
 			ProjectileLaunched->ProjectileStartLoc = TempProjectileStartLoc;
+			ProjectileLaunched->SetFX();
 		}
 		else {
 			FActorSpawnParameters SpawnParameters;
@@ -844,12 +857,13 @@ void ABaseCharacter::ProjectileHandler(FString AttackName) {
 			AProjectileBase * ProjectileLaunched = (GetWorld()->SpawnActor<AProjectileBase>(BaseProjectile, GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket"))), UKismetMathLibrary::MakeRotFromX(MaxProjectileRange - GetMesh()->GetSocketLocation(FName(TEXT("Shieldsocket")))), SpawnParameters));
 			ProjectileLaunched->ProjectileName = AttackName;
 			ProjectileLaunched->ProjectileStartLoc = TempProjectileStartLoc;
+			ProjectileLaunched->SetFX();
 		}
 	}
 }
 // Do not move player if within proximity and facing them, move if not
 void ABaseCharacter::CheckMoveDuringAttack() {
-	if (Overlapping == true) {
+	if (Overlapping == true && this->HasAuthority() && CanAttack == false) {
 		FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
 		RV_TraceParams.bTraceComplex = true;
 		RV_TraceParams.bTraceAsyncScene = true;

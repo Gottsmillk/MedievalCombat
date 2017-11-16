@@ -209,12 +209,12 @@ void ARevenant::AddRemainingInputsClient() {
 	DamageTable.Add(FDamageTableStruct("SBasicAttack", 3.0f));
 	DamageTable.Add(FDamageTableStruct("HBasicAttack", 6.0f));
 	DamageTable.Add(FDamageTableStruct("CounteringBlow", 2.0f));
-	DamageTable.Add(FDamageTableStruct("StaggeringKick", 1.0f));
-	DamageTable.Add(FDamageTableStruct("Impede", 1.0f));
-	DamageTable.Add(FDamageTableStruct("LifeDrain", 6.0f));
-	DamageTable.Add(FDamageTableStruct("DebilitatingKick", 1.0f));
+	DamageTable.Add(FDamageTableStruct("StaggeringKick", 4.0f));
+	DamageTable.Add(FDamageTableStruct("Impede", 4.0f));
+	DamageTable.Add(FDamageTableStruct("LifeDrain", 4.0f));
+	DamageTable.Add(FDamageTableStruct("DebilitatingKick", 2.0f));
 	DamageTable.Add(FDamageTableStruct("EmpoweringStrike", 3.0f));
-	DamageTable.Add(FDamageTableStruct("EnergyDrain", 4.0f));
+	DamageTable.Add(FDamageTableStruct("EnergyDrain", 6.0f));
 	DamageTable.Add(FDamageTableStruct("ChannelingStrike", 15.0f));
 	DamageTable.Add(FDamageTableStruct("PoisonBlade", 2.0f));
 	//Add to Attack Array
@@ -431,7 +431,7 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 	{
 		PoweredBashHurtbox->bGenerateOverlapEvents = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(3 + (ComboAmount * 2.0f), AttackedTarget), true, true, false);
+		InflictDamage(AttackedTarget, CalcFinalDamage(5 + (ComboAmount * 4.0f), AttackedTarget), true, true, false);
 	}
 }
 
@@ -439,21 +439,20 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 void ARevenant::SendEventToAttacker(ABaseCharacter* Attacker) {
 	if (ImpairActive == true) {
 		Attacker->AddCooldownModifier(1.0f, Attacker->CurrentAttackName, 1.0f);
-		ImpairActive = false;
 	}
 }
 
 /** Overriding Attack Effect Handler */
 void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 	if (AttackName == "LifeDrain") {
-		Health = UKismetMathLibrary::FClamp(Health + ((CurrentDamage * 2)/3), 0.0f, 100.0f);
+		Health = UKismetMathLibrary::FClamp(Health + (CurrentDamage * 2), 0.0f, 100.0f);
 	}
 	else if (AttackName == "EmpoweringStrike") {
-		AddDamageModifier(0.2f, 2.0f, 1);
+		AddDamageModifier(0.3f, 2.0f, 1);
 	}
 	else if (AttackName == "EnergyDrain") {
-		Resilience = UKismetMathLibrary::FClamp(Resilience + 20.0f, 0.0f, 100.0f);
-		Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - 20.0f, 0.0f, 100.0f);
+		Resilience = UKismetMathLibrary::FClamp(Resilience + 30.0f, 0.0f, 100.0f);
+		Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - 30.0f, 0.0f, 100.0f);
 	}
 	else if (AttackName == "ChannelingStrike") {
 		float PushValue = 500 + (20 * ComboAmount);
@@ -461,7 +460,7 @@ void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 		Target->LaunchCharacter(TempVector, true, true);
 	}
 	else if (AttackName == "PoisonBlade") {
-		Target->ApplyDamageOverTime("FlinchOnLast", 2.5f, 5, 2.0f, 1.0f, this);
+		Target->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
 	}
 }
 void ARevenant::AttackExecute(FString AttackName) {
@@ -480,422 +479,424 @@ bool ARevenant::AttackExecuteClientToServer_Validate(const FString &AttackName) 
 	return true;
 }
 void ARevenant::AttackExecuteServer(FString AttackName) {
-	// Standard Actions
-	if (AttackName == "BlockRelease") {
-		BlockReleasedEvent();
-	}
-	else if (AttackName == "Roll") {
-		RollPressedEvent();
-	}
-	else if (AttackName == "SideStep") {
-		SideStepPressedEvent();
-	}
-	// Utilities
-	else if (AttackName == "ShadowStance") {
-		if (Flinched == false && CanAttack == true && MenuUp == false && IsRolling == false && IsSideStepping == false && GetCooldown(AttackName) <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
-			DetectMode = true;
-			if (this->HasAuthority()) {
-				FActorSpawnParameters SpawnParameters;
-				SpawnParameters.Instigator = this;
-				SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-				FRotator TempRot = GetMesh()->K2_GetComponentRotation();
-				TempRot.Yaw += 90;
-				ABaseCharacter * SpawnedShadow = (GetWorld()->SpawnActor<ABaseCharacter>(Shadow, GetMesh()->K2_GetComponentLocation(), TempRot, SpawnParameters));
+	if (IsDead == false && MenuUp == false) {
+		// Standard Actions
+		if (AttackName == "BlockRelease") {
+			BlockReleasedEvent();
+		}
+		else if (AttackName == "Roll") {
+			RollPressedEvent();
+		}
+		else if (AttackName == "SideStep") {
+			SideStepPressedEvent();
+		}
+		// Utilities
+		else if (AttackName == "ShadowStance") {
+			if (Flinched == false && CanAttack == true && IsRolling == false && IsSideStepping == false && GetCooldown(AttackName) <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+				DetectMode = true;
+				if (this->HasAuthority()) {
+					FActorSpawnParameters SpawnParameters;
+					SpawnParameters.Instigator = this;
+					SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+					FRotator TempRot = GetMesh()->K2_GetComponentRotation();
+					TempRot.Yaw += 90;
+					ABaseCharacter * SpawnedShadow = (GetWorld()->SpawnActor<ABaseCharacter>(Shadow, GetMesh()->K2_GetComponentLocation(), TempRot, SpawnParameters));
 
-				if (IsBlocking == true) {
-					SpawnedShadow->IsBlocking = true;
-					SpawnedShadow->BlockingAnim = 1.0f;
+					if (IsBlocking == true) {
+						SpawnedShadow->IsBlocking = true;
+						SpawnedShadow->BlockingAnim = 1.0f;
+					}
+					TurnInvisibleRepAll();
 				}
+				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
+			}
+		}
+		else if (AttackName == "Agility") {
+			if (Flinched == false && CanAttack == true && GetCooldown(AttackName) <= CurrentGameTime) {
+				DetectMode = true;
+				AgilityEffect = true;
+				AddSpeedModifier(2.0f, 2.0f);
 				TurnInvisibleRepAll();
+				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 			}
-			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 		}
-	}
-	else if (AttackName == "Agility") {
-		if (Flinched == false && CanAttack == true && MenuUp == false && GetCooldown(AttackName) <= CurrentGameTime) {
-			DetectMode = true;
-			AgilityEffect = true;
-			AddSpeedModifier(2.0f, 2.0f);
-			TurnInvisibleRepAll();
-			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
-		}
-	}
-	else if (AttackName == "Unwaver") {
-		if (Flinched == false && MenuUp == false && GetCooldown(AttackName) <= CurrentGameTime) {
-			SuperArmor = true;
-			if (DetectMode == false) {
-				InitializeParticle(UnwaverFX);
+		else if (AttackName == "Unwaver") {
+			if (Flinched == false && GetCooldown(AttackName) <= CurrentGameTime) {
+				SuperArmor = true;
+				if (DetectMode == false) {
+					InitializeParticle(UnwaverFX, GetMesh()->K2_GetComponentLocation(), true);
+				}
+				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
+				GetWorldTimerManager().SetTimer(UnwaverDelayTimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.5f, false);
 			}
-			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
-			GetWorldTimerManager().SetTimer(UnwaverDelayTimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.0f, false);
 		}
-	}
-	else if (AttackName == "Impair") {
-		if (MenuUp == false && GetCooldown(AttackName) <= CurrentGameTime) {
-			if (DetectMode == false) {
-				InitializeParticle(ImpairFX);
+		else if (AttackName == "Impair") {
+			if (GetCooldown(AttackName) <= CurrentGameTime) {
+				if (DetectMode == false) {
+					InitializeParticle(ImpairFX, GetMesh()->K2_GetComponentLocation(), true);
+				}
+				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
+				ImpairActive = true;
+				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 1.5f, false);
 			}
-			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
-			ImpairActive = true;
-			GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 1.0f, false);
 		}
-	}
-	else if (AttackName == "Fortify") {
-		if (MenuUp == false && GetCooldown(AttackName) <= CurrentGameTime) {
-			if (DetectMode == false) {
-				InitializeParticle(FortifyFX);
+		else if (AttackName == "Fortify") {
+			if (GetCooldown(AttackName) <= CurrentGameTime) {
+				if (DetectMode == false) {
+					InitializeParticle(FortifyFX, GetMesh()->K2_GetComponentLocation(), true);
+				}
+				AddDefenseModifier(3.0f, 1.5f, 99);
+				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 			}
-			AddDefenseModifier(3.0f, 1.0f, 99);
-			SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 		}
-	}
-	else {
-		if (AttackName == "BlockPress") {
-			BlockPressedEvent();
-		}
-		else if (this->GetMovementComponent()->IsMovingOnGround() == true) {
-			// Basic Attacks
-			if (AttackName == "SBasicAttack") {
-				FName SBasicAttackAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Montage.SBasicAttack_Montage");
-				UAnimMontage *SBasicAttackAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *SBasicAttackAnimPath.ToString()));
+		else {
+			if (AttackName == "BlockPress") {
+				BlockPressedEvent();
+			}
+			else if (this->GetMovementComponent()->IsMovingOnGround() == true) {
+				// Basic Attacks
+				if (AttackName == "SBasicAttack") {
+					FName SBasicAttackAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Montage.SBasicAttack_Montage");
+					UAnimMontage *SBasicAttackAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *SBasicAttackAnimPath.ToString()));
 
-				if (CheckChainable(AttackName) == false) { // If no combo
+					if (CheckChainable(AttackName) == false) { // If no combo
+						AttackHandler(
+							AttackName, // Name
+							AttackName, // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							SBasicAttackAnimMontage, // Animation to use
+							0.3f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							AttackName, // Type
+							0.5f, // Re-Casting delay
+							0.9f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							GetRandomMontage(SBasicAttackAnims), // Animation to use
+							0.2f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+				}
+				else if (AttackName == "HBasicAttack") {
+					FName HBasicAttackAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Montage.HBasicAttack_Montage");
+					UAnimMontage *HBasicAttackAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HBasicAttackAnimPath.ToString()));
+
+					if (CheckChainable(AttackName) == false) { // If no combo
+						AttackHandler(
+							AttackName, // Name
+							AttackName, // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							HBasicAttackAnimMontage, // Animation to use
+							0.6f, // Delay before Hitbox starts
+							0.3f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							AttackName, // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							GetRandomMontage(HBasicAttackAnims), // Animation to use
+							0.2f, // Delay before Hitbox starts
+							0.3f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+				}
+				else if (AttackName == "CounteringBlow") {
+					FName CounteringBlowAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Countering_Blow_Montage.Countering_Blow_Montage");
+					UAnimMontage *CounteringBlowAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *CounteringBlowAnimPath.ToString()));
 					AttackHandler(
 						AttackName, // Name
 						AttackName, // Type
 						0.5f, // Re-Casting delay
 						1.0f, // Speed of Animation
 						false, // Based on previous Attack, is it Chainable
-						SBasicAttackAnimMontage, // Animation to use
+						CounteringBlowAnimMontage, // Animation to use
+						0.2f, // Delay before Hitbox starts
+						0.2f, // Time duration of Hitbox
+						0.0f, // Amount of damage
+						true, // Whether or not to use hitbox instead
+						CounteringBlowHurtbox, // Which hitbox to initiate
+						false); // Use Projectile?
+				}
+				// Combo Extenders
+				else if (AttackName == "StaggeringKick") {
+					FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+					UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
+					AttackHandler(
+						AttackName, // Name
+						"HBasicAttack", // Type
+						0.5f, // Re-Casting delay
+						1.0f, // Speed of Animation
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						KickAnimMontage, // Animation to use
 						0.3f, // Delay before Hitbox starts
 						0.2f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
+						0.0f, // Amount of damage
+						true, // Whether or not to use hitbox instead
+						KickHurtbox, // Which hitbox to initiate
 						false); // Use Projectile?
 				}
-				else { // If combo
+				else if (AttackName == "Impede") {
+					FName ImpedeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Impede_Montage.Impede_Montage");
+					UAnimMontage *ImpedeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ImpedeAnimPath.ToString()));
 					AttackHandler(
 						AttackName, // Name
-						AttackName, // Type
+						"ComboExtender", // Type
 						0.5f, // Re-Casting delay
-						0.9f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						GetRandomMontage(SBasicAttackAnims), // Animation to use
+						1.0f, // Speed of Animation
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						ImpedeAnimMontage, // Animation to use
 						0.2f, // Delay before Hitbox starts
-						0.2f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-			}
-			else if (AttackName == "HBasicAttack") {
-				FName HBasicAttackAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Montage.HBasicAttack_Montage");
-				UAnimMontage *HBasicAttackAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HBasicAttackAnimPath.ToString()));
-
-				if (CheckChainable(AttackName) == false) { // If no combo
-					AttackHandler(
-						AttackName, // Name
-						AttackName, // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						false, // Based on previous Attack, is it Chainable
-						HBasicAttackAnimMontage, // Animation to use
-						0.6f, // Delay before Hitbox starts
-						0.3f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-				else { // If combo
-					AttackHandler(
-						AttackName, // Name
-						AttackName, // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						GetRandomMontage(HBasicAttackAnims), // Animation to use
-						0.2f, // Delay before Hitbox starts
-						0.3f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-			}
-			else if (AttackName == "CounteringBlow") {
-				FName CounteringBlowAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Countering_Blow_Montage.Countering_Blow_Montage");
-				UAnimMontage *CounteringBlowAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *CounteringBlowAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					AttackName, // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					false, // Based on previous Attack, is it Chainable
-					CounteringBlowAnimMontage, // Animation to use
-					0.2f, // Delay before Hitbox starts
-					0.2f, // Time duration of Hitbox
-					0.0f, // Amount of damage
-					true, // Whether or not to use hitbox instead
-					CounteringBlowHurtbox, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			// Combo Extenders
-			else if (AttackName == "StaggeringKick") {
-				FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
-				UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"HBasicAttack", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					KickAnimMontage, // Animation to use
-					0.3f, // Delay before Hitbox starts
-					0.2f, // Time duration of Hitbox
-					0.0f, // Amount of damage
-					true, // Whether or not to use hitbox instead
-					KickHurtbox, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			else if (AttackName == "Impede") {
-				FName ImpedeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Impede_Montage.Impede_Montage");
-				UAnimMontage *ImpedeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ImpedeAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"ComboExtender", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					ImpedeAnimMontage, // Animation to use
-					0.2f, // Delay before Hitbox starts
-					0.1f, // Time duration of Hitbox
-					0.0f, // Amount of damage
-					false, // Whether or not to use hitbox instead
-					NULL, // Which hitbox to initiate
-					true); // Use Projectile?
-			}
-			else if (AttackName == "LifeDrain") {
-				FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
-				UAnimMontage *DrainAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *DrainAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"ComboExtender", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					DrainAnimMontage, // Animation to use
-					0.05f, // Delay before Hitbox starts
-					0.35f, // Time duration of Hitbox
-					GetDamage(AttackName), // Amount of damage
-					false, // Whether or not to use hitbox instead
-					NULL, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			else if (AttackName == "DebilitatingKick") {
-				FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
-				UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"ComboExtender", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					KickAnimMontage, // Animation to use
-					0.3f, // Delay before Hitbox starts
-					0.2f, // Time duration of Hitbox
-					0.0f, // Amount of damage
-					true, // Whether or not to use hitbox instead
-					KickHurtbox, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			else if (AttackName == "EmpoweringStrike") {
-				FName EmpoweringStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Empowering_Strike_Montage.Empowering_Strike_Montage");
-				UAnimMontage *EmpoweringStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *EmpoweringStrikeAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"ComboExtender", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					EmpoweringStrikeAnimMontage, // Animation to use
-					0.15f, // Delay before Hitbox starts
-					0.2f, // Time duration of Hitbox
-					GetDamage(AttackName), // Amount of damage
-					false, // Whether or not to use hitbox instead
-					NULL, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			else if (AttackName == "EnergyDrain") {
-				FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
-				UAnimMontage *DrainAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *DrainAnimPath.ToString()));
-				AttackHandler(
-					AttackName, // Name
-					"ComboExtender", // Type
-					0.5f, // Re-Casting delay
-					1.0f, // Speed of Animation
-					CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-					DrainAnimMontage, // Animation to use
-					0.05f, // Delay before Hitbox starts
-					0.35f, // Time duration of Hitbox
-					GetDamage(AttackName), // Amount of damage
-					false, // Whether or not to use hitbox instead
-					NULL, // Which hitbox to initiate
-					false); // Use Projectile?
-			}
-			// Combo Finishers
-			else if (AttackName == "PoweredBash") {
-				FName PoweredBashAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Powered_Bash_Montage.Powered_Bash_Montage");
-				UAnimMontage *PoweredBashAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoweredBashAnimPath.ToString()));
-				FName PoweredBashComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Powered_Bash_Combo_Montage.Powered_Bash_Combo_Montage");
-				UAnimMontage *PoweredBashComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoweredBashComboAnimPath.ToString()));
-				if (CheckChainable("ComboFinisher") == false) {
-					AttackHandler(
-						AttackName, // Name
-						"ComboFinisher", // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						false, // Based on previous Attack, is it Chainable
-						PoweredBashAnimMontage, // Animation to use
-						0.6f, // Delay before Hitbox starts
 						0.1f, // Time duration of Hitbox
 						0.0f, // Amount of damage
-						true, // Whether or not to use hitbox instead
-						PoweredBashHurtbox, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-				else { // If combo
-					AttackHandler(
-						AttackName, // Name
-						"ComboFinisher", // Type
-						0.7f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						PoweredBashComboAnimMontage, // Animation to use
-						0.3f, // Delay before Hitbox starts
-						0.2f, // Time duration of Hitbox
-						0.0f, // Amount of damage
-						true, // Whether or not to use hitbox instead
-						PoweredBashHurtbox, // Which h
-						false); // Use Projectile?
-				}
-			}
-			else if (AttackName == "ChannelingStrike") {
-				FName ChannelingStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Channeling_Strike_Montage.Channeling_Strike_Montage");
-				UAnimMontage *ChannelingStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ChannelingStrikeAnimPath.ToString()));
-				FName ChannelingStrikeComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Channeling_Strike_Combo_Montage.Channeling_Strike_Combo_Montage");
-				UAnimMontage *ChannelingStrikeComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ChannelingStrikeComboAnimPath.ToString()));
-
-				if (CheckChainable("ComboFinisher") == false) { // If no combo
-					AttackHandler(
-						AttackName, // Name
-						"ComboFinisher", // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						false, // Based on previous Attack, is it Chainable
-						ChannelingStrikeAnimMontage, // Animation to use
-						0.35f, // Delay before Hitbox starts
-						0.5f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
 						false, // Whether or not to use hitbox instead
 						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
+						true); // Use Projectile?
 				}
-				else { // If combo
+				else if (AttackName == "LifeDrain") {
+					FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
+					UAnimMontage *DrainAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *DrainAnimPath.ToString()));
 					AttackHandler(
 						AttackName, // Name
-						"ComboFinisher", // Type
-						0.65f, // Re-Casting delay
+						"ComboExtender", // Type
+						0.5f, // Re-Casting delay
 						1.0f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						ChannelingStrikeComboAnimMontage, // Animation to use
-						0.25f, // Delay before Hitbox starts
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						DrainAnimMontage, // Animation to use
+						0.05f, // Delay before Hitbox starts
 						0.35f, // Time duration of Hitbox
 						GetDamage(AttackName), // Amount of damage
 						false, // Whether or not to use hitbox instead
 						NULL, // Which hitbox to initiate
 						false); // Use Projectile?
 				}
-			}
-			else if (AttackName == "PoisonBlade") {
-				FName PoisonBladeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Poison_Blade_Montage.Poison_Blade_Montage");
-				UAnimMontage *ChannelingStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoisonBladeAnimPath.ToString()));
-				FName PoisonBladeComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Poison_Blade_Combo_Montage.Poison_Blade_Combo_Montage");
-				UAnimMontage *PoisonBladeComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoisonBladeComboAnimPath.ToString()));
-
-				if (CheckChainable("ComboFinisher") == false) { // If no combo
+				else if (AttackName == "DebilitatingKick") {
+					FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+					UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
 					AttackHandler(
 						AttackName, // Name
-						"ComboFinisher", // Type
+						"ComboExtender", // Type
 						0.5f, // Re-Casting delay
 						1.0f, // Speed of Animation
-						false, // Based on previous Attack, is it Chainable
-						ChannelingStrikeAnimMontage, // Animation to use
-						0.35f, // Delay before Hitbox starts
-						0.4f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-				else { // If combo
-					AttackHandler(
-						AttackName, // Name
-						"ComboFinisher", // Type
-						0.7f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						PoisonBladeComboAnimMontage, // Animation to use
-						0.25f, // Delay before Hitbox starts
-						0.3f, // Time duration of Hitbox
-						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
-				}
-			}
-			else if (AttackName == "LastResort") {
-				FName LastResortAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Last_Resort_Montage.Last_Resort_Montage");
-				UAnimMontage *LastResortAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *LastResortAnimPath.ToString()));
-				FName LastResortComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Last_Resort_Combo_Montage.Last_Resort_Combo_Montage");
-				UAnimMontage *LastResortComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *LastResortComboAnimPath.ToString()));
-
-				if (CheckChainable("ComboFinisher") == false) { // If no combo
-					AttackHandler(
-						AttackName, // Name
-						"ComboFinisher", // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
-						false, // Based on previous Attack, is it Chainable
-						LastResortAnimMontage, // Animation to use
-						0.6f, // Delay before Hitbox starts
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						KickAnimMontage, // Animation to use
+						0.3f, // Delay before Hitbox starts
 						0.2f, // Time duration of Hitbox
-						UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.0f, (3.0f - (Resilience/50.0f))), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
+						0.0f, // Amount of damage
+						true, // Whether or not to use hitbox instead
+						KickHurtbox, // Which hitbox to initiate
 						false); // Use Projectile?
 				}
-				else { // If combo
+				else if (AttackName == "EmpoweringStrike") {
+					FName EmpoweringStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Empowering_Strike_Montage.Empowering_Strike_Montage");
+					UAnimMontage *EmpoweringStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *EmpoweringStrikeAnimPath.ToString()));
 					AttackHandler(
 						AttackName, // Name
-						"ComboFinisher", // Type
-						0.8f, // Re-Casting delay
+						"ComboExtender", // Type
+						0.5f, // Re-Casting delay
 						1.0f, // Speed of Animation
-						true, // Based on previous Attack, is it Chainable
-						LastResortComboAnimMontage, // Animation to use
-						0.4f, // Delay before Hitbox starts
-						0.1f, // Time duration of Hitbox
-						UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.0f, (3.0f - (Resilience / 50.0f))), // Amount of damage
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						EmpoweringStrikeAnimMontage, // Animation to use
+						0.15f, // Delay before Hitbox starts
+						0.2f, // Time duration of Hitbox
+						GetDamage(AttackName), // Amount of damage
 						false, // Whether or not to use hitbox instead
 						NULL, // Which hitbox to initiate
 						false); // Use Projectile?
 				}
+				else if (AttackName == "EnergyDrain") {
+					FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
+					UAnimMontage *DrainAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *DrainAnimPath.ToString()));
+					AttackHandler(
+						AttackName, // Name
+						"ComboExtender", // Type
+						0.5f, // Re-Casting delay
+						1.0f, // Speed of Animation
+						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+						DrainAnimMontage, // Animation to use
+						0.05f, // Delay before Hitbox starts
+						0.35f, // Time duration of Hitbox
+						GetDamage(AttackName), // Amount of damage
+						false, // Whether or not to use hitbox instead
+						NULL, // Which hitbox to initiate
+						false); // Use Projectile?
+				}
+				// Combo Finishers
+				else if (AttackName == "PoweredBash") {
+					FName PoweredBashAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Powered_Bash_Montage.Powered_Bash_Montage");
+					UAnimMontage *PoweredBashAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoweredBashAnimPath.ToString()));
+					FName PoweredBashComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Powered_Bash_Combo_Montage.Powered_Bash_Combo_Montage");
+					UAnimMontage *PoweredBashComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoweredBashComboAnimPath.ToString()));
+					if (CheckChainable("ComboFinisher") == false) {
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							PoweredBashAnimMontage, // Animation to use
+							0.6f, // Delay before Hitbox starts
+							0.1f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							PoweredBashHurtbox, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.7f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							PoweredBashComboAnimMontage, // Animation to use
+							0.3f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							PoweredBashHurtbox, // Which h
+							false); // Use Projectile?
+					}
+				}
+				else if (AttackName == "ChannelingStrike") {
+					FName ChannelingStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Channeling_Strike_Montage.Channeling_Strike_Montage");
+					UAnimMontage *ChannelingStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ChannelingStrikeAnimPath.ToString()));
+					FName ChannelingStrikeComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Channeling_Strike_Combo_Montage.Channeling_Strike_Combo_Montage");
+					UAnimMontage *ChannelingStrikeComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *ChannelingStrikeComboAnimPath.ToString()));
+
+					if (CheckChainable("ComboFinisher") == false) { // If no combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							ChannelingStrikeAnimMontage, // Animation to use
+							0.35f, // Delay before Hitbox starts
+							0.5f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.65f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							ChannelingStrikeComboAnimMontage, // Animation to use
+							0.25f, // Delay before Hitbox starts
+							0.35f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+				}
+				else if (AttackName == "PoisonBlade") {
+					FName PoisonBladeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Poison_Blade_Montage.Poison_Blade_Montage");
+					UAnimMontage *ChannelingStrikeAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoisonBladeAnimPath.ToString()));
+					FName PoisonBladeComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Poison_Blade_Combo_Montage.Poison_Blade_Combo_Montage");
+					UAnimMontage *PoisonBladeComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *PoisonBladeComboAnimPath.ToString()));
+
+					if (CheckChainable("ComboFinisher") == false) { // If no combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							ChannelingStrikeAnimMontage, // Animation to use
+							0.35f, // Delay before Hitbox starts
+							0.4f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.7f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							PoisonBladeComboAnimMontage, // Animation to use
+							0.25f, // Delay before Hitbox starts
+							0.3f, // Time duration of Hitbox
+							GetDamage(AttackName), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+				}
+				else if (AttackName == "LastResort") {
+					FName LastResortAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Last_Resort_Montage.Last_Resort_Montage");
+					UAnimMontage *LastResortAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *LastResortAnimPath.ToString()));
+					FName LastResortComboAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Last_Resort_Combo_Montage.Last_Resort_Combo_Montage");
+					UAnimMontage *LastResortComboAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *LastResortComboAnimPath.ToString()));
+
+					if (CheckChainable("ComboFinisher") == false) { // If no combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.5f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							false, // Based on previous Attack, is it Chainable
+							LastResortAnimMontage, // Animation to use
+							0.6f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+					else { // If combo
+						AttackHandler(
+							AttackName, // Name
+							"ComboFinisher", // Type
+							0.8f, // Re-Casting delay
+							1.0f, // Speed of Animation
+							true, // Based on previous Attack, is it Chainable
+							LastResortComboAnimMontage, // Animation to use
+							0.4f, // Delay before Hitbox starts
+							0.1f, // Time duration of Hitbox
+							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
+							false, // Whether or not to use hitbox instead
+							NULL, // Which hitbox to initiate
+							false); // Use Projectile?
+					}
+				}
 			}
-		}
-		if (DetectMode == true) {
-			DetectAction();
+			if (DetectMode == true) {
+				DetectAction();
+			}
 		}
 	}
 }
@@ -905,37 +906,37 @@ float ARevenant::SetAttackCooldownAmt(FString AttackName) {
 		return 6.0f;
 	}
 	else if (AttackName == "StaggeringKick") {
-		return 12.0f;
+		return 10.0f;
 	}
 	else if (AttackName == "Impede") {
 		return 7.0f;
 	}
 	else if (AttackName == "LifeDrain") {
-		return 12.0f;
+		return 15.0f;
 	}
 	else if (AttackName == "DebilitatingKick") {
-		return 12.0f;
+		return 16.0f;
 	}
 	else if (AttackName == "EmpoweringStrike") {
-		return 10.0f;
+		return 15.0f;
 	}
 	else if (AttackName == "EnergyDrain") {
-		return 11.0f;
+		return 12.0f;
 	}
 	else if (AttackName == "ShadowStance") {
-		return 14.0f;
+		return 15.0f;
 	}
 	else if (AttackName == "Agility") {
-		return 14.0f;
+		return 15.0f;
 	}
 	else if (AttackName == "Unwaver") {
-		return 18.0f;
+		return 15.0f;
 	}
 	else if (AttackName == "Impair") {
-		return 13.0f;
+		return 9.0f;
 	}
 	else if (AttackName == "Fortify") {
-		return 11.0f;
+		return 12.0f;
 	}
 	else if (AttackName == "PoweredBash") {
 		return 20.0f;
