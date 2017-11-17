@@ -2,7 +2,46 @@
 #include "UnrealNetwork.h"
 #include "Revenant.h"
 
-// Constructor for Revenant
+/** Where attack effects are handled:
+  * Note: All attacks use AttackExecute (Attack Handler Functions)
+  *       Listed below are external dependencies
+  * 
+  * ***********Basic Abilities***********
+  * 
+  * Basic Attacks - None
+  * SideStep - BaseCharacter
+  * Roll - BaseCharacter
+  * Block - BaseCharacter
+  * Countering Blow - CounteringBlowHurtboxOverlap (Attack Handler Functions)
+  *
+  * ***********Combo Extender Abilities***********
+  * 
+  * Staggering Kick - KickHurtboxOverlap (Attack Handler Functions)
+  * Impede - BaseProjectile Blueprint and C++ class
+  * Life Drain - AttackEffect (Attack Handler functions)
+  * Debilitating Kick - KickHurtboxOverlap (Attack Handler Functions)
+  * Empowering Strike - AttackEffect (Attack Handler functions)
+  * Energy Drain - AttackEffect (Attack Handler functions)
+  * 
+  * ***********Utility Abilities***********
+  * 
+  * Shadow Stance - DetectAction (Attack Effect Functions)
+  * Agility - DetectAction, Revenant Blueprint (for FX) (Attack Effect Functions)
+  * Unwaver - UnsetAntiFlinch (Attack Effect Functions)
+  * Impair - RemoveImpairActive, SendEventToAttacker (Attack Effect, Death/Damage Functions)
+  * Fortify - None
+  * 
+  * ***********Combo Finisher Abilities***********
+  * 
+  * Powered Bash - PoweredBashHurtboxOverlap (Attack Handler Functions)
+  * Channeling Strike - AttackEffect (Attack Handler functions)
+  * Poison Blade - AttackEffect, DoT Component C++ Class (Attack Handler functions)
+  * Last Resort - None
+  */
+
+/* ------------------------------- INITIALIZATIONS -------------------------------- */
+
+// Constructor for Revenant, includes blueprint instantiation
 ARevenant::ARevenant()
 {
 	bReplicates = true;
@@ -69,6 +108,7 @@ ARevenant::ARevenant()
 	}
 }
 
+// Allows Replication of variables for Client/Server Networking
 void ARevenant::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -76,6 +116,12 @@ void ARevenant::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLife
 	// Replicate to everyone
 	DOREPLIFETIME(ARevenant, AgilityEffect);
 	DOREPLIFETIME(ARevenant, ImpairActive);
+}
+
+// Setup Inputs
+void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 // Called when the game starts or when spawned
@@ -88,11 +134,112 @@ void ARevenant::BeginPlay()
 	PoweredBashHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::PoweredBashHurtboxOverlap);
 }
 
-// Called to bind functionality to input
-void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+/* ---------------------------------- FUNCTIONS ----------------------------------- */
+
+/* ************************ Animation Functions ************************* */
+
+// Load Basic Attack Animations into their arrays (looks ugly but much more convenient than other means)
+void ARevenant::LoadBasicAttackAnimations() {
+	FName TempAttackName = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage1.SBasicAttack_Combo_Montage1");
+	FName TempAttackName2 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage2.SBasicAttack_Combo_Montage2");
+	FName TempAttackName3 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage3.SBasicAttack_Combo_Montage3");
+	FName TempAttackName4 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage4.SBasicAttack_Combo_Montage4");
+	FName TempAttackName5 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage5.SBasicAttack_Combo_Montage5");
+	FName TempAttackName6 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage6.SBasicAttack_Combo_Montage6");
+	FName TempAttackName7 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage7.SBasicAttack_Combo_Montage7");
+	FName TempAttackName8 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage8.SBasicAttack_Combo_Montage8");
+	FName TempAttackName9 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage9.SBasicAttack_Combo_Montage9");
+	FName TempAttackName10 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage10.SBasicAttack_Combo_Montage10");
+	FName TempAttackName11 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage11.SBasicAttack_Combo_Montage11");
+	FName TempAttackName12 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage12.SBasicAttack_Combo_Montage12");
+	FName TempAttackName13 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage13.SBasicAttack_Combo_Montage13");
+	FName TempAttackName14 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage14.SBasicAttack_Combo_Montage14");
+	FName TempAttackName15 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage15.SBasicAttack_Combo_Montage15");
+	FName TempAttackName16 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage16.SBasicAttack_Combo_Montage16");
+	FName TempAttackName17 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage17.SBasicAttack_Combo_Montage17");
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName2.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName3.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName4.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName5.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName6.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName7.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName8.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName9.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName10.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName11.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName12.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName13.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName14.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName15.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName16.ToString())));
+	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName17.ToString())));
+
+	FName HTempAttackName = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage1.HBasicAttack_Combo_Montage1");
+	FName HTempAttackName2 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage2.HBasicAttack_Combo_Montage2");
+	FName HTempAttackName3 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage3.HBasicAttack_Combo_Montage3");
+	FName HTempAttackName4 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage4.HBasicAttack_Combo_Montage4");
+	FName HTempAttackName5 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage5.HBasicAttack_Combo_Montage5");
+	FName HTempAttackName6 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage6.HBasicAttack_Combo_Montage6");
+	FName HTempAttackName7 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage7.HBasicAttack_Combo_Montage7");
+	FName HTempAttackName8 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage8.HBasicAttack_Combo_Montage8");
+	FName HTempAttackName9 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage9.HBasicAttack_Combo_Montage9");
+	FName HTempAttackName10 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage10.HBasicAttack_Combo_Montage10");
+	FName HTempAttackName11 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage11.HBasicAttack_Combo_Montage11");
+	FName HTempAttackName12 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage12.HBasicAttack_Combo_Montage12");
+	FName HTempAttackName13 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage13.HBasicAttack_Combo_Montage13");
+	FName HTempAttackName14 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage14.HBasicAttack_Combo_Montage14");
+	FName HTempAttackName15 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage15.HBasicAttack_Combo_Montage15");
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName2.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName3.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName4.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName5.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName6.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName7.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName8.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName9.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName10.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName11.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName12.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName13.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName14.ToString())));
+	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName15.ToString())));
+
 }
+
+// Gets random montage from animation array
+UAnimMontage* ARevenant::GetRandomMontage(TArray<UAnimMontage *> MontageArray) {
+	return MontageArray[UKismetMathLibrary::RandomIntegerInRange(0, MontageArray.Num() - 1)];
+}
+
+/* **************************** UI Functions **************************** */
+
+// Reset ability selected arrays each Character Select UI Launch
+void ARevenant::ResetSelectedAbilityArrays() {
+	if (this->HasAuthority()) {
+		ResetSelectedAbilityArraysClient();
+	}
+	else {
+		ResetSelectedAbilityArraysServer();
+		ResetSelectedAbilityArraysClient();
+	}
+}
+void ARevenant::ResetSelectedAbilityArraysServer_Implementation() {
+	ResetSelectedAbilityArraysClient();
+}
+bool ARevenant::ResetSelectedAbilityArraysServer_Validate() {
+	return true;
+}
+void ARevenant::ResetSelectedAbilityArraysClient() {
+	ComboExtenderArray.Empty();
+	UtilityArray.Empty();
+	ComboFinisherArray.Empty();
+	AttackArray.Empty();
+	DamageTable.Empty();
+}
+
+// Perfom final actions once "Submit" is pressed on the "Choose Attacks" UI
 void ARevenant::AddRemainingInputs() {
 	FInputActionBinding ActionBind;
 	FInputActionHandlerSignature ActionBindHandler;
@@ -232,107 +379,11 @@ void ARevenant::AddRemainingInputsClient() {
 	AttackArray.Add(FAttackStruct(UtilityArray[1], 0.0f, SetAttackCooldownAmt(UtilityArray[1])));
 	AttackArray.Add(FAttackStruct(ComboFinisherArray[0], 0.0f, SetAttackCooldownAmt(ComboFinisherArray[0])));
 	AttackArray.Add(FAttackStruct(ComboFinisherArray[1], 0.0f, SetAttackCooldownAmt(ComboFinisherArray[1])));
-
+	// Menu down
 	MenuUp = false;
 }
 
-void ARevenant::ResetSelectedAbilityArrays() {
-	if (this->HasAuthority()) {
-		ResetSelectedAbilityArraysClient();
-	}
-	else {
-		ResetSelectedAbilityArraysServer();
-		ResetSelectedAbilityArraysClient();
-	}
-}
-void ARevenant::ResetSelectedAbilityArraysServer_Implementation() {
-	ResetSelectedAbilityArraysClient();
-}
-bool ARevenant::ResetSelectedAbilityArraysServer_Validate() {
-	return true;
-}
-void ARevenant::ResetSelectedAbilityArraysClient() {
-	ComboExtenderArray.Empty();
-	UtilityArray.Empty();
-	ComboFinisherArray.Empty();
-	AttackArray.Empty();
-	DamageTable.Empty();
-}
-
-void ARevenant::LoadBasicAttackAnimations() {
-	// Set Animation arrays (looks ugly but much more convenient than other means)
-	FName TempAttackName = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage1.SBasicAttack_Combo_Montage1");
-	FName TempAttackName2 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage2.SBasicAttack_Combo_Montage2");
-	FName TempAttackName3 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage3.SBasicAttack_Combo_Montage3");
-	FName TempAttackName4 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage4.SBasicAttack_Combo_Montage4");
-	FName TempAttackName5 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage5.SBasicAttack_Combo_Montage5");
-	FName TempAttackName6 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage6.SBasicAttack_Combo_Montage6");
-	FName TempAttackName7 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage7.SBasicAttack_Combo_Montage7");
-	FName TempAttackName8 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage8.SBasicAttack_Combo_Montage8");
-	FName TempAttackName9 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage9.SBasicAttack_Combo_Montage9");
-	FName TempAttackName10 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage10.SBasicAttack_Combo_Montage10");
-	FName TempAttackName11 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage11.SBasicAttack_Combo_Montage11");
-	FName TempAttackName12 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage12.SBasicAttack_Combo_Montage12");
-	FName TempAttackName13 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage13.SBasicAttack_Combo_Montage13");
-	FName TempAttackName14 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage14.SBasicAttack_Combo_Montage14");
-	FName TempAttackName15 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage15.SBasicAttack_Combo_Montage15");
-	FName TempAttackName16 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage16.SBasicAttack_Combo_Montage16");
-	FName TempAttackName17 = TEXT("/Game/Classes/Revenant/Animations/Attacks/BasicAttacks/SBasicAttack_Combo_Montage17.SBasicAttack_Combo_Montage17");
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName2.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName3.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName4.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName5.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName6.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName7.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName8.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName9.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName10.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName11.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName12.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName13.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName14.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName15.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName16.ToString())));
-	SBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *TempAttackName17.ToString())));
-
-	FName HTempAttackName = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage1.HBasicAttack_Combo_Montage1");
-	FName HTempAttackName2 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage2.HBasicAttack_Combo_Montage2");
-	FName HTempAttackName3 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage3.HBasicAttack_Combo_Montage3");
-	FName HTempAttackName4 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage4.HBasicAttack_Combo_Montage4");
-	FName HTempAttackName5 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage5.HBasicAttack_Combo_Montage5");
-	FName HTempAttackName6 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage6.HBasicAttack_Combo_Montage6");
-	FName HTempAttackName7 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage7.HBasicAttack_Combo_Montage7");
-	FName HTempAttackName8 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage8.HBasicAttack_Combo_Montage8");
-	FName HTempAttackName9 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage9.HBasicAttack_Combo_Montage9");
-	FName HTempAttackName10 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage10.HBasicAttack_Combo_Montage10");
-	FName HTempAttackName11 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage11.HBasicAttack_Combo_Montage11");
-	FName HTempAttackName12 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage12.HBasicAttack_Combo_Montage12");
-	FName HTempAttackName13 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage13.HBasicAttack_Combo_Montage13");
-	FName HTempAttackName14 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage14.HBasicAttack_Combo_Montage14");
-	FName HTempAttackName15 = TEXT("/Game/Classes/Revenant/Animations/Attacks/HardAttacks/HBasicAttack_Combo_Montage15.HBasicAttack_Combo_Montage15");
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName2.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName3.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName4.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName5.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName6.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName7.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName8.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName9.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName10.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName11.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName12.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName13.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName14.ToString())));
-	HBasicAttackAnims.Add(Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *HTempAttackName15.ToString())));
-
-}
-
-UAnimMontage* ARevenant::GetRandomMontage(TArray<UAnimMontage *> MontageArray) {
-	return MontageArray[UKismetMathLibrary::RandomIntegerInRange(0, MontageArray.Num()-1)];
-}
-
+// Add Attack to character when attack is chosen in UI
 void ARevenant::AddAttack(FString Type, FString AttackName, bool Toggled) {
 	if (this->HasAuthority()) {
 		AddAttackClient(Type, AttackName, Toggled);
@@ -398,7 +449,112 @@ void ARevenant::AddAttackClient(FString Type, FString AttackName, bool Toggled) 
 		}
 	}
 }
-/* Hitbox Events */
+
+// Set Cooldown amounts upon Submit press, THIS IS WHERE COOLDOWNS ARE CHANGED
+float ARevenant::SetAttackCooldownAmt(FString AttackName) {
+	if (AttackName == "CounteringBlow") {
+		return 6.0f;
+	}
+	else if (AttackName == "StaggeringKick") {
+		return 10.0f;
+	}
+	else if (AttackName == "Impede") {
+		return 7.0f;
+	}
+	else if (AttackName == "LifeDrain") {
+		return 15.0f;
+	}
+	else if (AttackName == "DebilitatingKick") {
+		return 16.0f;
+	}
+	else if (AttackName == "EmpoweringStrike") {
+		return 15.0f;
+	}
+	else if (AttackName == "EnergyDrain") {
+		return 12.0f;
+	}
+	else if (AttackName == "ShadowStance") {
+		return 15.0f;
+	}
+	else if (AttackName == "Agility") {
+		return 15.0f;
+	}
+	else if (AttackName == "Unwaver") {
+		return 15.0f;
+	}
+	else if (AttackName == "Impair") {
+		return 9.0f;
+	}
+	else if (AttackName == "Fortify") {
+		return 12.0f;
+	}
+	else if (AttackName == "PoweredBash") {
+		return 20.0f;
+	}
+	else if (AttackName == "ChannelingStrike") {
+		return 16.0f;
+	}
+	else if (AttackName == "PoisonBlade") {
+		return 20.0f;
+	}
+	else if (AttackName == "LastResort") {
+		return 25.0f;
+	}
+	else {
+		return 0.0f;
+	}
+}
+
+/* *********************** Damage/Death Functions *********************** */
+
+// Apply override so player who received damage can send events to player who dealt damage
+void ARevenant::SendEventToAttacker(ABaseCharacter* Attacker) {
+	if (ImpairActive == true) {
+		Attacker->AddCooldownModifier(1.0f, Attacker->CurrentAttackName, 1.0f);
+	}
+}
+
+/* ********************** Attack Effect Functions ********************** */
+
+// Function for detecting abilities
+void ARevenant::TurnInvisibleRepAll_Implementation()
+{
+	GetMesh()->SetOnlyOwnerSee(true);
+	Shield->SetOnlyOwnerSee(true);
+	WeaponVisibility(true);
+	HPOverhead->SetVisibility(false);
+	GetWorldTimerManager().SetTimer(InvisibilityDelayTimerHandle, this, &ARevenant::DetectAction, 2.0f, false);
+}
+void ARevenant::DetectAction() {
+	if (DetectMode == true) {
+		if (this->HasAuthority()) {
+			DetectRepAll();
+		}
+	}
+}
+void ARevenant::DetectRepAll_Implementation()
+{
+	GetMesh()->SetOnlyOwnerSee(false);
+	Shield->SetOnlyOwnerSee(false);
+	WeaponVisibility(false);
+	HPOverhead->SetVisibility(true);
+	DetectMode = false;
+	AgilityEffect = false;
+}
+
+// Unset SuperArmor for Unwaver
+void ARevenant::UnsetAntiFlinch() {
+	SuperArmor = false;
+}
+
+// Unset Impair effect
+void ARevenant::RemoveImpairActive() {
+	ImpairActive = false;
+}
+
+/* ********************** Attack Handler Functions ********************** */
+
+// Events executed for Hitbox Attacks
 void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 { 
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
@@ -435,14 +591,7 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 	}
 }
 
-/** Apply override so player who received damage can send events to player who dealt damage */
-void ARevenant::SendEventToAttacker(ABaseCharacter* Attacker) {
-	if (ImpairActive == true) {
-		Attacker->AddCooldownModifier(1.0f, Attacker->CurrentAttackName, 1.0f);
-	}
-}
-
-/** Overriding Attack Effect Handler */
+// Function for applying attack effects to enemy
 void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 	if (AttackName == "LifeDrain") {
 		Health = UKismetMathLibrary::FClamp(Health + (CurrentDamage * 2), 0.0f, 100.0f);
@@ -463,13 +612,14 @@ void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 		Target->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
 	}
 }
+
+// Master function for converting inputs into their corresponding ability events
 void ARevenant::AttackExecute(FString AttackName) {
 	if (this->HasAuthority()) {
 		AttackExecuteServer(AttackName);
 	}
 	else {
 		AttackExecuteClientToServer(AttackName);
-		//AttackExecuteServer(AttackName);
 	}
 }
 void ARevenant::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
@@ -899,92 +1049,4 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 			}
 		}
 	}
-}
-/** Set Cooldowns */
-float ARevenant::SetAttackCooldownAmt(FString AttackName) {
-	if (AttackName == "CounteringBlow") {
-		return 6.0f;
-	}
-	else if (AttackName == "StaggeringKick") {
-		return 10.0f;
-	}
-	else if (AttackName == "Impede") {
-		return 7.0f;
-	}
-	else if (AttackName == "LifeDrain") {
-		return 15.0f;
-	}
-	else if (AttackName == "DebilitatingKick") {
-		return 16.0f;
-	}
-	else if (AttackName == "EmpoweringStrike") {
-		return 15.0f;
-	}
-	else if (AttackName == "EnergyDrain") {
-		return 12.0f;
-	}
-	else if (AttackName == "ShadowStance") {
-		return 15.0f;
-	}
-	else if (AttackName == "Agility") {
-		return 15.0f;
-	}
-	else if (AttackName == "Unwaver") {
-		return 15.0f;
-	}
-	else if (AttackName == "Impair") {
-		return 9.0f;
-	}
-	else if (AttackName == "Fortify") {
-		return 12.0f;
-	}
-	else if (AttackName == "PoweredBash") {
-		return 20.0f;
-	}
-	else if (AttackName == "ChannelingStrike") {
-		return 16.0f;
-	}
-	else if (AttackName == "PoisonBlade") {
-		return 20.0f;
-	}
-	else if (AttackName == "LastResort") {
-		return 25.0f;
-	}
-	else {
-		return 0.0f;
-	}
-}
-
-/** Function that will call detect action, which will call function declaring to all */
-void ARevenant::TurnInvisibleRepAll_Implementation()
-{
-	GetMesh()->SetOnlyOwnerSee(true);
-	Shield->SetOnlyOwnerSee(true);
-	WeaponVisibility(true);
-	HPOverhead->SetVisibility(false);
-	GetWorldTimerManager().SetTimer(InvisibilityDelayTimerHandle, this, &ARevenant::DetectAction, 2.0f, false);
-}
-/** Function for detecting abilities */
-void ARevenant::DetectAction() {
-	if (DetectMode == true) {
-		if (this->HasAuthority()) {
-			DetectRepAll();
-		}
-	}
-}
-void ARevenant::DetectRepAll_Implementation()
-{
-	GetMesh()->SetOnlyOwnerSee(false);
-	Shield->SetOnlyOwnerSee(false);
-	WeaponVisibility(false);
-	HPOverhead->SetVisibility(true);
-	DetectMode = false;
-	AgilityEffect = false;
-}
-
-void ARevenant::UnsetAntiFlinch() {
-	SuperArmor = false;
-}
-void ARevenant::RemoveImpairActive() {
-	ImpairActive = false;
 }

@@ -454,7 +454,7 @@ public:
 
 /* ---------------------------------- FUNCTIONS ----------------------------------- */
 
-	/* ************************* Defaults Functions ************************* */
+	/* ************************* Default Functions ************************* */
 
 	// Make weapon visible
 	UFUNCTION()
@@ -500,6 +500,7 @@ public:
 	UFUNCTION()
 		void DamageIndicatorTick();
 
+	// Add hitsplat when damage received
 	UFUNCTION(Client, Reliable)
 		void InitiateDamageEffect();
 
@@ -557,7 +558,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void AddDefenseModifier(float Modifier, float Duration, int NumHits);
 
-	/** Get Damage for attack */
+	// Get base damage for attack
 	UFUNCTION(BlueprintCallable)
 		float GetDamage(FString AttackName);
 
@@ -720,11 +721,8 @@ public:
 	UFUNCTION()
 		void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox);
 
-	/* ************************** Timer Functions *************************** */
-
-	// Timer Function to replicate DELAY in Blueprints
-	UFUNCTION()
-		void onTimerEnd();
+	/* ********************** Timer Functions ********************** */
+	void onTimerEnd();
 
 protected:
 	// Called when the game starts or when spawned
