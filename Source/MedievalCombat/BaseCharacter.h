@@ -176,11 +176,11 @@ public:
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		float XSensitivity = 0.5f;
+		float XSensitivity = 0.2f;
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		float YSensitivity = 0.5f;
+		float YSensitivity = 0.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
 		TSubclassOf<AActor> BlockedFX;

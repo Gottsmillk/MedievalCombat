@@ -742,6 +742,8 @@ bool ABaseCharacter::ServerDeathServer_Validate() {
 }
 void ABaseCharacter::ServerDeathRepAll_Implementation()
 {
+	IsBlocking = false;
+	BlockPressed = false;
 	IsDead = true;
 	Invincible = true;
 	CurrentFBLoc = 0;

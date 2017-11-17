@@ -419,7 +419,7 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), false, true, false);
 		}
 		else if (CurrentAttackName == "DebilitatingKick") {
-			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false) == true) {
+			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false) == true && ComboAmount > 1) {
 				AttackedTarget->SetCooldown("Roll", 1.5f);
 			}
 		}
@@ -649,11 +649,11 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					AttackHandler(
 						AttackName, // Name
 						"HBasicAttack", // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
+						0.6f, // Re-Casting delay
+						1.2f, // Speed of Animation
 						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
 						KickAnimMontage, // Animation to use
-						0.3f, // Delay before Hitbox starts
+						0.2f, // Delay before Hitbox starts
 						0.2f, // Time duration of Hitbox
 						0.0f, // Amount of damage
 						true, // Whether or not to use hitbox instead
@@ -700,11 +700,11 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					AttackHandler(
 						AttackName, // Name
 						"ComboExtender", // Type
-						0.5f, // Re-Casting delay
-						1.0f, // Speed of Animation
+						0.6f, // Re-Casting delay
+						1.2f, // Speed of Animation
 						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
 						KickAnimMontage, // Animation to use
-						0.3f, // Delay before Hitbox starts
+						0.2f, // Delay before Hitbox starts
 						0.2f, // Time duration of Hitbox
 						0.0f, // Amount of damage
 						true, // Whether or not to use hitbox instead
@@ -792,12 +792,12 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						AttackHandler(
 							AttackName, // Name
 							"ComboFinisher", // Type
-							0.5f, // Re-Casting delay
+							0.65f, // Re-Casting delay
 							1.0f, // Speed of Animation
 							false, // Based on previous Attack, is it Chainable
 							ChannelingStrikeAnimMontage, // Animation to use
-							0.35f, // Delay before Hitbox starts
-							0.5f, // Time duration of Hitbox
+							0.3f, // Delay before Hitbox starts
+							0.4f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
@@ -807,12 +807,12 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						AttackHandler(
 							AttackName, // Name
 							"ComboFinisher", // Type
-							0.65f, // Re-Casting delay
+							0.8f, // Re-Casting delay
 							1.0f, // Speed of Animation
 							true, // Based on previous Attack, is it Chainable
 							ChannelingStrikeComboAnimMontage, // Animation to use
-							0.25f, // Delay before Hitbox starts
-							0.35f, // Time duration of Hitbox
+							0.18f, // Delay before Hitbox starts
+							0.25f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
@@ -829,12 +829,12 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						AttackHandler(
 							AttackName, // Name
 							"ComboFinisher", // Type
-							0.5f, // Re-Casting delay
+							0.65f, // Re-Casting delay
 							1.0f, // Speed of Animation
 							false, // Based on previous Attack, is it Chainable
 							ChannelingStrikeAnimMontage, // Animation to use
-							0.35f, // Delay before Hitbox starts
-							0.4f, // Time duration of Hitbox
+							0.3f, // Delay before Hitbox starts
+							0.35f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
@@ -844,11 +844,11 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						AttackHandler(
 							AttackName, // Name
 							"ComboFinisher", // Type
-							0.7f, // Re-Casting delay
+							0.8f, // Re-Casting delay
 							1.0f, // Speed of Animation
 							true, // Based on previous Attack, is it Chainable
 							PoisonBladeComboAnimMontage, // Animation to use
-							0.25f, // Delay before Hitbox starts
+							0.12f, // Delay before Hitbox starts
 							0.3f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
@@ -866,12 +866,12 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						AttackHandler(
 							AttackName, // Name
 							"ComboFinisher", // Type
-							0.5f, // Re-Casting delay
+							0.65f, // Re-Casting delay
 							1.0f, // Speed of Animation
 							false, // Based on previous Attack, is it Chainable
 							LastResortAnimMontage, // Animation to use
-							0.6f, // Delay before Hitbox starts
-							0.2f, // Time duration of Hitbox
+							0.5f, // Delay before Hitbox starts
+							0.3f, // Time duration of Hitbox
 							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
@@ -885,8 +885,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							1.0f, // Speed of Animation
 							true, // Based on previous Attack, is it Chainable
 							LastResortComboAnimMontage, // Animation to use
-							0.4f, // Delay before Hitbox starts
-							0.1f, // Time duration of Hitbox
+							0.25f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
 							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
