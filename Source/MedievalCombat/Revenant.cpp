@@ -517,6 +517,7 @@ void ARevenant::TurnInvisibleRepAll_Implementation() {
 	GetMesh()->SetOnlyOwnerSee(true);
 	Shield->SetOnlyOwnerSee(true);
 	WeaponVisibility(true);
+	UsernameOverhead->SetVisibility(false);
 	HPOverhead->SetVisibility(false);
 	GetWorldTimerManager().SetTimer(InvisibilityDelayTimerHandle, this, &ARevenant::DetectAction, 2.0f, false);
 }
@@ -531,6 +532,7 @@ void ARevenant::DetectRepAll_Implementation() {
 	GetMesh()->SetOnlyOwnerSee(false);
 	Shield->SetOnlyOwnerSee(false);
 	WeaponVisibility(false);
+	UsernameOverhead->SetVisibility(true);
 	HPOverhead->SetVisibility(true);
 	DetectMode = false;
 	AgilityEffect = false;
@@ -642,7 +644,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					FRotator TempRot = GetMesh()->K2_GetComponentRotation();
 					TempRot.Yaw += 90;
 					ABaseCharacter * SpawnedShadow = (GetWorld()->SpawnActor<ABaseCharacter>(Shadow, GetMesh()->K2_GetComponentLocation(), TempRot, SpawnParameters));
-
+					SpawnedShadow->Username = Username;
+					SpawnedShadow->Health = Health;
 					if (IsBlocking == true) {
 						SpawnedShadow->IsBlocking = true;
 						SpawnedShadow->BlockingAnim = 1.0f;
@@ -678,7 +681,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				}
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				ImpairActive = true;
-				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 1.5f, false);
+				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 2.0f, false);
 			}
 		}
 		else if (AttackName == "Fortify") {

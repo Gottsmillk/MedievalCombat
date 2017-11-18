@@ -176,6 +176,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	// Projectile Variables
 
 	// UI Variables
+	DOREPLIFETIME(ABaseCharacter, Username);
 	DOREPLIFETIME(ABaseCharacter, MenuUp);
 
 	// Damage Indicator Variables
@@ -522,6 +523,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 // Deal Damage to player
 bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches, bool DoT) {
 	if (Target->Invincible == false) {
+		Target->SendEventToAttacker(this);
 		if (Target->IsBlocking != true || GetPlayerDirections(Target) == false || BlockCheck == false) { // Incorrectly blocked
 			CurrentAttackHit = true;
 			ResilienceAttackReplenish += Damage;
@@ -553,7 +555,6 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 	InitiateDamageEffect();
 	InitiateDamageNumberEffect(Damage, this);
 	Attacker->ComboAmount++;
-	SendEventToAttacker(Attacker);
 	if (Flinched == false && ResilienceDefenseReplenish > 0.0f) {
 		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceDefenseReplenish, 0.0f, 100.0f);
 		ResilienceDefenseReplenish = 0.0f;

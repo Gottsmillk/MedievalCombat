@@ -53,6 +53,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UWidgetComponent * HPOverhead;
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UWidgetComponent * UsernameOverhead;
 
 	/* ********************** Attack Effect Variables ********************** */
 

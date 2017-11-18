@@ -209,6 +209,10 @@ public:
 
 	// Indicates whether a UI menu is up or not
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)
+		FString Username = "";
+
+	// Indicates whether a UI menu is up or not
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)
 		bool MenuUp = true;
 
 	// Reference UMG Asset in the Editor
