@@ -42,8 +42,7 @@
 /* ------------------------------- INITIALIZATIONS -------------------------------- */
 
 // Constructor for Revenant, includes blueprint instantiation
-ARevenant::ARevenant()
-{
+ARevenant::ARevenant() {
 	bReplicates = true;
 	// Create shield
 	Shield = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Shield"));
@@ -109,8 +108,7 @@ ARevenant::ARevenant()
 }
 
 // Allows Replication of variables for Client/Server Networking
-void ARevenant::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
-{
+void ARevenant::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Replicate to everyone
@@ -119,14 +117,12 @@ void ARevenant::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLife
 }
 
 // Setup Inputs
-void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
+void ARevenant::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 // Called when the game starts or when spawned
-void ARevenant::BeginPlay()
-{
+void ARevenant::BeginPlay() {
 	Super::BeginPlay();
 	LoadBasicAttackAnimations();
 	CounteringBlowHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::CounteringBlowHurtboxOverlap);
@@ -517,8 +513,7 @@ void ARevenant::SendEventToAttacker(ABaseCharacter* Attacker) {
 /* ********************** Attack Effect Functions ********************** */
 
 // Function for detecting abilities
-void ARevenant::TurnInvisibleRepAll_Implementation()
-{
+void ARevenant::TurnInvisibleRepAll_Implementation() {
 	GetMesh()->SetOnlyOwnerSee(true);
 	Shield->SetOnlyOwnerSee(true);
 	WeaponVisibility(true);
@@ -532,8 +527,7 @@ void ARevenant::DetectAction() {
 		}
 	}
 }
-void ARevenant::DetectRepAll_Implementation()
-{
+void ARevenant::DetectRepAll_Implementation() {
 	GetMesh()->SetOnlyOwnerSee(false);
 	Shield->SetOnlyOwnerSee(false);
 	WeaponVisibility(false);
@@ -555,8 +549,7 @@ void ARevenant::RemoveImpairActive() {
 /* ********************** Attack Handler Functions ********************** */
 
 // Events executed for Hitbox Attacks
-void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{ 
+void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) { 
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
@@ -564,8 +557,7 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
 	}
 }
-void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
+void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		KickHurtbox->bGenerateOverlapEvents = false;
@@ -581,8 +573,7 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 		}
 	}
 }
-void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
+void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		PoweredBashHurtbox->bGenerateOverlapEvents = false;

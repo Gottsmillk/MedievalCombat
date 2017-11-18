@@ -20,8 +20,7 @@
 /* ------------------------------- INITIALIZATIONS -------------------------------- */
 
 // Constructor for BaseCharacter, includes blueprint instantiation
-ABaseCharacter::ABaseCharacter()
-{
+ABaseCharacter::ABaseCharacter() {
 	// Set size for collision capsule
 	GetCapsuleComponent()->SetVisibility(false);
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 70.0f);
@@ -165,8 +164,7 @@ ABaseCharacter::ABaseCharacter()
 }
 
 // Allows Replication of variables for Client/Server Networking
-void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
-{
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Defaults
@@ -246,15 +244,13 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 }
 
 // Setup Inputs, overriden by children
-void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
+void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
 
 // Called when the game starts or when spawned
-void ABaseCharacter::BeginPlay()
-{
+void ABaseCharacter::BeginPlay() {
 	Super::BeginPlay();
 	//Start Regen/Drain handlers
 	if (this->HasAuthority()) {
@@ -265,8 +261,7 @@ void ABaseCharacter::BeginPlay()
 /* ************************* Default Functions ************************* */
 
 // Actions performed every frame/tick
-void ABaseCharacter::Tick(float DeltaTime)
-{
+void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 	DamageDeltaTime = DeltaTime;
 	MovementHandler(); // Changes movement based on if player is rolling or not
@@ -380,7 +375,6 @@ void ABaseCharacter::BlockAnimation() {
 
 // Perfom final actions once "Submit" is pressed on the "Choose Attacks" UI
 void ABaseCharacter::AddRemainingInputs(){
-
 }
 
 /* ********************* Damage Indicator Functions ********************* */
@@ -573,8 +567,7 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 }
 
 // Event when received damage from Blueprint function call, usually will not run this
-void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{
+void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser) {
 	if (!Invincible)
 	{
 		Health = Health - Damage;
@@ -689,8 +682,7 @@ void ABaseCharacter::ServerDeathServer_Implementation() {
 bool ABaseCharacter::ServerDeathServer_Validate() {
 	return true;
 }
-void ABaseCharacter::ServerDeathRepAll_Implementation()
-{
+void ABaseCharacter::ServerDeathRepAll_Implementation() {
 	IsBlocking = false;
 	BlockPressed = false;
 	IsDead = true;
@@ -704,8 +696,7 @@ void ABaseCharacter::ServerDeathRepAll_Implementation()
 	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
 	GetWorldTimerManager().SetTimer(DeathDelayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
 }
-void ABaseCharacter::RespawnEvent()
-{
+void ABaseCharacter::RespawnEvent() {
 	//TODO: Implement death animation stuff
 	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
@@ -1041,12 +1032,10 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 
 // Function for applying attack effects to enemy
 void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
-
 }
 
 // Master function for converting inputs into their corresponding ability events
 void ABaseCharacter::AttackExecute(FString AttackName) {
-
 }
 void ABaseCharacter::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
 }
@@ -1058,7 +1047,6 @@ void ABaseCharacter::AttackExecuteServer(FString AttackName) {
 
 // Function for detecting when an attack is cast, used for stealth abilities
 void ABaseCharacter::DetectAction() {
-
 }
 
 // Checks if the current attack should be chainable
@@ -1188,5 +1176,4 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, floa
 
 /* ********************** Timer Functions ********************** */
 void ABaseCharacter::onTimerEnd() {
-
 }

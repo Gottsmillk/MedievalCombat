@@ -115,3 +115,4 @@ $RECYCLE.BIN/
 bfg-1.12.15.jar
 *.ipch
 *.orig
+.vscode/
