@@ -381,7 +381,7 @@ void ABaseCharacter::AddRemainingInputs(){
 /* ********************* Damage Indicator Functions ********************* */
 
 // Damage Indicator per Tick Function for controlling display values
-void ABaseCharacter::DamageIndicatorTick() {
+void ABaseCharacter::DamageIndicatorTick_Implementation() {
 	// Only local controller
 	if (this->IsLocallyControlled() == true) {
 		// Dynamically interpolate blend values for blood effect strength
@@ -669,7 +669,7 @@ float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 }
 
 // Events fired when a character dies
-void ABaseCharacter::ServerDeath() {
+void ABaseCharacter::ServerDeath_Implementation() {
 	if (this->HasAuthority()) {
 		ServerDeathRepAll();
 	}

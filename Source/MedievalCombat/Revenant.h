@@ -1,7 +1,6 @@
 #pragma once
 
 #include "BaseCharacter.h"
-#include "WidgetComponent.h"
 #include "Revenant.generated.h"
 
 UCLASS()
@@ -50,12 +49,6 @@ public:
 		TArray<UAnimMontage *> HBasicAttackAnims;
 
 	/* **************************** UI Variables ***************************** */
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UWidgetComponent * HPOverhead;
-		
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UWidgetComponent * UsernameOverhead;
 
 	/* ********************** Attack Effect Variables ********************** */
 

@@ -3,7 +3,9 @@
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Runtime/UMG/Public/Blueprint/UserWidget.h"
 #include "DamageNumberDisplay.h"
+#include "WidgetComponent.h"
 #include "ProjectileBase.h"
 #include "BaseCharacter.generated.h"
 
@@ -206,6 +208,12 @@ public:
 		TSubclassOf<AProjectileBase> BaseProjectile;
 
 	/* **************************** UI Variables ***************************** */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UWidgetComponent * HPOverhead;
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UWidgetComponent * UsernameOverhead;
 
 	// Indicates whether a UI menu is up or not
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)
@@ -501,7 +509,7 @@ public:
 	/* ********************* Damage Indicator Functions ********************* */
 
 	// Damage Indicator per Tick Function for controlling display values
-	UFUNCTION()
+	UFUNCTION(BlueprintNativeEvent)
 		void DamageIndicatorTick();
 
 	// Add hitsplat when damage received
@@ -571,7 +579,7 @@ public:
 		float CalcFinalDamage(float Damage, ABaseCharacter* Target);
 
 	// Events fired when a character dies
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ServerDeath();
 	UFUNCTION(Server, Reliable, WithValidation)
 		void ServerDeathServer();
