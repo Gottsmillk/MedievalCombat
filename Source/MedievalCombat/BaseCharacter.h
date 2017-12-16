@@ -317,11 +317,11 @@ public:
 		TArray<FDamageTableStruct> DamageTable;
 
 	// Array that stores buff values
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
 		TArray<FAttackModifierStruct> AttackModifierArray;
 
 	// Array that stores debuff values
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
 		TArray<FDefenseModifierStruct> DefenseModifierArray;
 
 	/* ************************* Cooldown Variables ************************* */
@@ -331,7 +331,7 @@ public:
 		float AttackCastCooldown = 0;
 
 	// Array storing cooldown buffs/debuffs
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Cooldowns)
 		TArray<FCooldownEffectsStruct> CooldownEffectsArray;
 
 	/* ************************ Resilience Variables ************************ */
@@ -580,13 +580,7 @@ public:
 
 	// Events fired when a character dies
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ServerDeath();
-	UFUNCTION(Server, Reliable, WithValidation)
-		void ServerDeathServer();
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void ServerDeathRepAll();
-	UFUNCTION()
-		void RespawnEvent();
+		void ServerDeath(ABaseCharacter* Attacker);
 
 	/* ************************ Cooldown Functions ************************* */
 
@@ -602,9 +596,13 @@ public:
 	UFUNCTION(BlueprintCallable)
 		float GetCooldown(FString AttackName);
 
-	// Set active cooldown time for attack
+	// Set active cooldown time for attack for server and owning client
 	UFUNCTION(BlueprintCallable)
 		void SetCooldown(FString AttackName, float CooldownAmt);
+	UFUNCTION(Client, Reliable)
+		void SetCooldownClient(const FString &AttackName, float CooldownAmt);
+	UFUNCTION()
+		void SetCooldownAll(FString AttackName, float CooldownAmt);
 
 	// Calculate Cooldown Amount after cooldown buffs and debuffs
 	UFUNCTION()

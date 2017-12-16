@@ -50,6 +50,10 @@ public:
 
 	/* **************************** UI Variables ***************************** */
 
+	// Converts abilities from int value from UI to corresponding FString (Workaround for UE4 issue)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = UI)
+		TArray<FString> AbilityConversionArray;
+
 	/* ********************** Attack Effect Variables ********************** */
 
 	// Impair effect
@@ -92,6 +96,10 @@ public:
 
 	/* **************************** UI Functions **************************** */
 
+	// Populate array that converts int values of attacks to FString
+	UFUNCTION(BlueprintCallable)
+		void SetConvertedAbilities();
+
 	// Reset ability selected arrays each Character Select UI Launch
 	UFUNCTION(BlueprintCallable)
 		void ResetSelectedAbilityArrays();
@@ -110,11 +118,11 @@ public:
 
 	// Add Attack to character when attack is chosen in UI
 	UFUNCTION(BlueprintCallable)
-		void AddAttack(FString Type, FString AttackName, bool Toggled);
+		void AddAttack(int Type, int AttackName, bool Toggled);
 	UFUNCTION(Server, Reliable, WithValidation)
-		void AddAttackServer(const FString &Type, const FString &AttackName, bool Toggled);
+		void AddAttackServer(int Type, int AttackName, bool Toggled);
 	UFUNCTION()
-		void AddAttackClient(FString Type, FString AttackName, bool Toggled);
+		void AddAttackClient(int Type, int AttackName, bool Toggled);
 
 	// Set Cooldown amounts upon Submit press
 	UFUNCTION(BlueprintCallable)

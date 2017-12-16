@@ -563,7 +563,7 @@ void ABaseCharacter::ApplyDamage(float Damage, ABaseCharacter * Attacker) {
 		DetectAction();
 	}
 	if (Health <= 0) {
-		ServerDeath();
+		ServerDeath(Attacker);
 	}
 }
 
@@ -579,7 +579,7 @@ void ABaseCharacter::ReceiveAnyDamage(float Damage, const UDamageType* DamageTyp
 		}
 		if (Health <= 0)
 		{
-			ServerDeath();
+			ServerDeath(Cast<ABaseCharacter>(DamageCauser));
 		}
 	}
 }
@@ -669,21 +669,7 @@ float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 }
 
 // Events fired when a character dies
-void ABaseCharacter::ServerDeath_Implementation() {
-	if (this->HasAuthority()) {
-		ServerDeathRepAll();
-	}
-	else {
-		ServerDeathServer();
-	}
-}
-void ABaseCharacter::ServerDeathServer_Implementation() {
-	ServerDeathRepAll();
-}
-bool ABaseCharacter::ServerDeathServer_Validate() {
-	return true;
-}
-void ABaseCharacter::ServerDeathRepAll_Implementation() {
+void ABaseCharacter::ServerDeath_Implementation(ABaseCharacter* Attacker) {
 	IsBlocking = false;
 	BlockPressed = false;
 	IsDead = true;
@@ -695,21 +681,8 @@ void ABaseCharacter::ServerDeathRepAll_Implementation() {
 	this->bUseControllerRotationYaw = 0;
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
 	GetCapsuleComponent()->SetCollisionProfileName(FName("PassThroughPlayer"));
-	GetWorldTimerManager().SetTimer(DeathDelayTimerHandle, this, &ABaseCharacter::RespawnEvent, 5.0f, false);
-}
-void ABaseCharacter::RespawnEvent() {
-	//TODO: Implement death animation stuff
-	TeleportTo(FVector(0, 0, 450), FRotator(0, 0, 0));
-	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
-	GetCapsuleComponent()->SetCollisionProfileName(FName("NoPassThroughPlayer"));
-	Health = 100;
-	IsDead = false;
-	MenuUp = false;
-	CanAttack = true;
-	Flinched = false;
-	Invincible = false;
-	AttackCastCooldown = 0.0f;
-	this->bUseControllerRotationYaw = 1;
+	FOutputDeviceNull ar;
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->CallFunctionByNameWithArguments(TEXT("ScorePlayer"), ar, NULL, true);
 }
 
 /* ************************ Cooldown Functions ************************* */
@@ -745,6 +718,13 @@ float ABaseCharacter::GetCooldown(FString AttackName) {
 
 // Set active cooldown time for attack
 void ABaseCharacter::SetCooldown(FString AttackName, float CooldownAmt) {
+	SetCooldownClient(AttackName, CooldownAmt);
+	SetCooldownAll(AttackName, CooldownAmt);
+}
+void ABaseCharacter::SetCooldownClient_Implementation(const FString &AttackName, float CooldownAmt) {
+	SetCooldownAll(AttackName, CooldownAmt);
+}
+void ABaseCharacter::SetCooldownAll(FString AttackName, float CooldownAmt) {
 	for (int i = 0; i < AttackArray.Num(); i++) {
 		if (AttackArray[i].AttackName.Equals(AttackName)) {
 			AttackArray[i].Cooldown = CurrentGameTime + CooldownAmt;
