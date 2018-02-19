@@ -105,6 +105,50 @@ ARevenant::ARevenant() {
 	if (FortifyFXBlueprint.Object) {
 		FortifyFX = FortifyFXBlueprint.Object;
 	}
+
+	// Instantiate BodyMeshMaterial
+	static ConstructorHelpers::FObjectFinder<UMaterial> FoundBodyMeshMaterial(TEXT("/Game/Classes/Revenant/Models/Materials/M_Char_Forge.M_Char_Forge"));
+	if (FoundBodyMeshMaterial.Succeeded())
+	{
+		BodyMeshMaterial = FoundBodyMeshMaterial.Object;
+	}
+	BodyMeshMaterialInst = UMaterialInstanceDynamic::Create(BodyMeshMaterial, GetMesh());
+
+	// Instantiate WeaponMeshMaterial
+	static ConstructorHelpers::FObjectFinder<UMaterial> FoundWeaponMeshMaterial(TEXT("/Game/Classes/Revenant/Models/Weapon/M_Blade_BlackKnight.M_Blade_BlackKnight"));
+	if (FoundWeaponMeshMaterial.Succeeded())
+	{
+		WeaponMeshMaterial = FoundWeaponMeshMaterial.Object;
+	}
+	WeaponMeshMaterialInst = UMaterialInstanceDynamic::Create(WeaponMeshMaterial, Weapon);
+
+	// Instantiate ShieldMeshMaterial
+	static ConstructorHelpers::FObjectFinder<UMaterial> FoundShieldMeshMaterial(TEXT("/Game/Classes/Revenant/Models/Weapon/Shield_Material.Shield_Material"));
+	if (FoundShieldMeshMaterial.Succeeded())
+	{
+		ShieldMeshMaterial = FoundShieldMeshMaterial.Object;
+	}
+	ShieldMeshMaterialInst = UMaterialInstanceDynamic::Create(ShieldMeshMaterial, Shield);
+
+	// Instantiate ShadowMaterial for combo extender
+	static ConstructorHelpers::FObjectFinder<UMaterial> FoundShadowMeshComboExtenderMaterial(TEXT("/Game/Blueprints/WeaponEffects/Revenant/ComboExtenderMeshMaterial.ComboExtenderMeshMaterial"));
+	if (FoundShadowMeshComboExtenderMaterial.Succeeded())
+	{
+		ShadowMaterialComboExtender = FoundShadowMeshComboExtenderMaterial.Object;
+	}
+	ShadowMaterialBodyInstComboExtender = UMaterialInstanceDynamic::Create(ShadowMaterialComboExtender, GetMesh());
+	ShadowMaterialWeaponInstComboExtender = UMaterialInstanceDynamic::Create(ShadowMaterialComboExtender, Weapon);
+	ShadowMaterialShieldInstComboExtender = UMaterialInstanceDynamic::Create(ShadowMaterialComboExtender, Shield);
+
+	// Instantiate ShadowMaterial for combo extender
+	static ConstructorHelpers::FObjectFinder<UMaterial> FoundShadowMeshComboFinisherMaterial(TEXT("/Game/Blueprints/WeaponEffects/Revenant/ComboFinisherMeshMaterial.ComboFinisherMeshMaterial"));
+	if (FoundShadowMeshComboFinisherMaterial.Succeeded())
+	{
+		ShadowMaterialComboFinisher = FoundShadowMeshComboFinisherMaterial.Object;
+	}
+	ShadowMaterialBodyInstComboFinisher = UMaterialInstanceDynamic::Create(ShadowMaterialComboFinisher, GetMesh());
+	ShadowMaterialWeaponInstComboFinisher = UMaterialInstanceDynamic::Create(ShadowMaterialComboFinisher, Weapon);
+	ShadowMaterialShieldInstComboFinisher = UMaterialInstanceDynamic::Create(ShadowMaterialComboFinisher, Shield);
 }
 
 // Allows Replication of variables for Client/Server Networking
@@ -129,6 +173,7 @@ void ARevenant::BeginPlay() {
 	CounteringBlowHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::CounteringBlowHurtboxOverlap);
 	KickHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::KickHurtboxOverlap);
 	PoweredBashHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::PoweredBashHurtboxOverlap);
+	WeaponHurtboxBase->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::StabHurtboxOverlap);
 }
 
 /* ---------------------------------- FUNCTIONS ----------------------------------- */
@@ -562,11 +607,20 @@ void ARevenant::DetectRepAll_Implementation() {
 // Unset SuperArmor for Unwaver
 void ARevenant::UnsetAntiFlinch() {
 	SuperArmor = false;
+	GetMesh()->SetCustomDepthStencilValue(1);
 }
 
-// Unset Impair effect
-void ARevenant::RemoveImpairActive() {
-	ImpairActive = false;
+// Unset effects
+void ARevenant::RemoveImpairEffect() {
+	if (ImpairActive == true) {
+		ImpairActive = false;
+	}
+	GetMesh()->SetCustomDepthStencilValue(1);
+}
+
+// Unset effects
+void ARevenant::RemoveEffect() {
+	GetMesh()->SetCustomDepthStencilValue(1);
 }
 
 /* ********************** Attack Handler Functions ********************** */
@@ -590,6 +644,7 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), false, true, false);
 		}
 		else if (CurrentAttackName == "DebilitatingKick") {
+			LastAttack = "ComboExtender";
 			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false) == true && ComboAmount > 1) {
 				AttackedTarget->SetCooldown("Roll", 1.5f);
 			}
@@ -604,26 +659,37 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 		InflictDamage(AttackedTarget, CalcFinalDamage(5 + (ComboAmount * 3.0f), AttackedTarget), true, true, false);
 	}
 }
+void ARevenant::StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
+	{
+		WeaponHurtboxBase->bGenerateOverlapEvents = false;
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
+
+		if (CurrentAttackName == "LifeDrain") {
+			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
+			Health = UKismetMathLibrary::FClamp(Health + (CurrentDamage * 2), 0.0f, 100.0f);
+		}
+		else if (CurrentAttackName == "EnergyDrain") {
+			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
+			Resilience = UKismetMathLibrary::FClamp(Resilience + 30.0f, 0.0f, 100.0f);
+			AttackedTarget->Resilience = UKismetMathLibrary::FClamp(AttackedTarget->Resilience - 30.0f, 0.0f, 100.0f);
+		}
+		else if (CurrentAttackName == "PoisonBlade") {
+			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
+			AttackedTarget->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
+		}
+	}
+}
 
 // Function for applying attack effects to enemy
 void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
-	if (AttackName == "LifeDrain") {
-		Health = UKismetMathLibrary::FClamp(Health + (CurrentDamage * 2), 0.0f, 100.0f);
-	}
-	else if (AttackName == "EmpoweringStrike") {
+	if (AttackName == "EmpoweringStrike") {
 		AddDamageModifier(0.3f, 2.0f, 1);
-	}
-	else if (AttackName == "EnergyDrain") {
-		Resilience = UKismetMathLibrary::FClamp(Resilience + 30.0f, 0.0f, 100.0f);
-		Target->Resilience = UKismetMathLibrary::FClamp(Target->Resilience - 30.0f, 0.0f, 100.0f);
 	}
 	else if (AttackName == "ChannelingStrike") {
 		float PushValue = 500 + (20 * ComboAmount);
 		FVector TempVector = (this->GetActorForwardVector() * PushValue) + (this->GetActorUpVector() * PushValue);
 		Target->LaunchCharacter(TempVector, true, true);
-	}
-	else if (AttackName == "PoisonBlade") {
-		Target->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
 	}
 }
 
@@ -691,6 +757,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				if (DetectMode == false) {
 					InitializeParticle(UnwaverFX, GetMesh()->K2_GetComponentLocation(), true);
 				}
+				GetMesh()->SetCustomDepthStencilValue(2);
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				GetWorldTimerManager().SetTimer(UnwaverDelayTimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.5f, false);
 			}
@@ -702,7 +769,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				}
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				ImpairActive = true;
-				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairActive, 2.0f, false);
+				GetMesh()->SetCustomDepthStencilValue(3);
+				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairEffect, 2.0f, false);
 			}
 		}
 		else if (AttackName == "Fortify") {
@@ -711,7 +779,9 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					InitializeParticle(FortifyFX, GetMesh()->K2_GetComponentLocation(), true);
 				}
 				AddDefenseModifier(3.0f, 1.5f, 99);
+				GetMesh()->SetCustomDepthStencilValue(4);
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
+				GetWorldTimerManager().SetTimer(FortifyDelayTimerHandle, this, &ARevenant::RemoveEffect, 1.5f, false);
 			}
 		}
 		else {
@@ -737,7 +807,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							1); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -752,7 +823,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							1); // Aura effect number arond player
 					}
 				}
 				else if (AttackName == "HBasicAttack") {
@@ -772,7 +844,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							1); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -787,7 +860,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							1); // Aura effect number arond player
 					}
 				}
 				else if (AttackName == "CounteringBlow") {
@@ -805,7 +879,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.0f, // Amount of damage
 						true, // Whether or not to use hitbox instead
 						CounteringBlowHurtbox, // Which hitbox to initiate
-						false); // Use Projectile?
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				// Combo Extenders
 				else if (AttackName == "StaggeringKick") {
@@ -823,7 +898,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.0f, // Amount of damage
 						true, // Whether or not to use hitbox instead
 						KickHurtbox, // Which hitbox to initiate
-						false); // Use Projectile?
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				else if (AttackName == "Impede") {
 					FName ImpedeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Impede_Montage.Impede_Montage");
@@ -840,7 +916,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.0f, // Amount of damage
 						false, // Whether or not to use hitbox instead
 						NULL, // Which hitbox to initiate
-						true); // Use Projectile?
+						true, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				else if (AttackName == "LifeDrain") {
 					FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
@@ -855,9 +932,10 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.05f, // Delay before Hitbox starts
 						0.35f, // Time duration of Hitbox
 						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
+						true, // Whether or not to use hitbox instead
+						WeaponHurtboxBase, // Which hitbox to initiate
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				else if (AttackName == "DebilitatingKick") {
 					FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
@@ -874,7 +952,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.0f, // Amount of damage
 						true, // Whether or not to use hitbox instead
 						KickHurtbox, // Which hitbox to initiate
-						false); // Use Projectile?
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				else if (AttackName == "EmpoweringStrike") {
 					FName EmpoweringStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Empowering_Strike_Montage.Empowering_Strike_Montage");
@@ -891,7 +970,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						GetDamage(AttackName), // Amount of damage
 						false, // Whether or not to use hitbox instead
 						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				else if (AttackName == "EnergyDrain") {
 					FName DrainAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Drain_Montage.Drain_Montage");
@@ -906,9 +986,10 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.05f, // Delay before Hitbox starts
 						0.35f, // Time duration of Hitbox
 						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
-						false); // Use Projectile?
+						true, // Whether or not to use hitbox instead
+						WeaponHurtboxBase, // Which hitbox to initiate
+						false, // Use Projectile?
+						1); // Aura effect number arond player
 				}
 				// Combo Finishers
 				else if (AttackName == "PoweredBash") {
@@ -929,7 +1010,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.0f, // Amount of damage
 							true, // Whether or not to use hitbox instead
 							PoweredBashHurtbox, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							5); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -943,8 +1025,9 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.2f, // Time duration of Hitbox
 							0.0f, // Amount of damage
 							true, // Whether or not to use hitbox instead
-							PoweredBashHurtbox, // Which h
-							false); // Use Projectile?
+							PoweredBashHurtbox, // Which hitbox to initiate
+							false, // Use Projectile?
+							5); // Aura effect number arond player
 					}
 				}
 				else if (AttackName == "ChannelingStrike") {
@@ -966,7 +1049,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							6); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -981,7 +1065,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							GetDamage(AttackName), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							6); // Aura effect number arond player
 					}
 				}
 				else if (AttackName == "PoisonBlade") {
@@ -1001,9 +1086,10 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.3f, // Delay before Hitbox starts
 							0.35f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
+							false, // Use Projectile?
+							8); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -1016,9 +1102,10 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.12f, // Delay before Hitbox starts
 							0.3f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
+							false, // Use Projectile?
+							8); // Aura effect number arond player
 					}
 				}
 				else if (AttackName == "LastResort") {
@@ -1040,7 +1127,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							7); // Aura effect number arond player
 					}
 					else { // If combo
 						AttackHandler(
@@ -1055,7 +1143,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
 							false, // Whether or not to use hitbox instead
 							NULL, // Which hitbox to initiate
-							false); // Use Projectile?
+							false, // Use Projectile?
+							7); // Aura effect number arond player
 					}
 				}
 			}
@@ -1064,4 +1153,28 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 			}
 		}
 	}
+}
+
+// Attack Effect Handler Start
+void ARevenant::AttackEffectHandlerStart(int StencilValue){
+	AttackEffectTrigger = true;
+	if (CurrentAttackType == "ComboExtender") {
+		//Weapon->SetMaterial(0, ShadowMaterialWeaponInstComboExtender);
+		//Shield->SetMaterial(0, ShadowMaterialShieldInstComboExtender);
+		//GetMesh()->SetMaterial(0, ShadowMaterialBodyInstComboExtender);
+	}
+	else if (CurrentAttackType == "ComboFinisher") {
+		//Weapon->SetMaterial(0, ShadowMaterialWeaponInstComboFinisher);
+		//Shield->SetMaterial(0, ShadowMaterialShieldInstComboFinisher);
+		//GetMesh()->SetMaterial(0, ShadowMaterialBodyInstComboFinisher);
+	}
+	GetMesh()->SetCustomDepthStencilValue(StencilValue);
+}
+
+// Attack Effect Handler End
+void ARevenant::AttackEffectHandlerEnd(int StencilValue){
+	//Weapon->SetMaterial(0, WeaponMeshMaterialInst);
+	//Shield->SetMaterial(0, ShieldMeshMaterialInst);
+	//GetMesh()->SetMaterial(0, BodyMeshMaterialInst);
+	GetMesh()->SetCustomDepthStencilValue(1);
 }

@@ -82,6 +82,29 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AttackHandler)
 		TSubclassOf<AActor> FortifyFX;
 
+	// Normal Body Texture
+	    UMaterial* BodyMeshMaterial;
+ 		UMaterialInstanceDynamic* BodyMeshMaterialInst;
+
+	// Normal Weapon Texture
+	    UMaterial* WeaponMeshMaterial;
+ 		UMaterialInstanceDynamic* WeaponMeshMaterialInst;
+
+	// Normal Shield Texture
+	    UMaterial* ShieldMeshMaterial;
+ 		UMaterialInstanceDynamic* ShieldMeshMaterialInst;
+	
+	// Shadow Texture
+	    UMaterial* ShadowMaterialComboExtender;
+ 		UMaterialInstanceDynamic* ShadowMaterialBodyInstComboExtender;
+ 		UMaterialInstanceDynamic* ShadowMaterialWeaponInstComboExtender;
+ 		UMaterialInstanceDynamic* ShadowMaterialShieldInstComboExtender;
+
+	    UMaterial* ShadowMaterialComboFinisher;
+ 		UMaterialInstanceDynamic* ShadowMaterialBodyInstComboFinisher;
+ 		UMaterialInstanceDynamic* ShadowMaterialWeaponInstComboFinisher;
+ 		UMaterialInstanceDynamic* ShadowMaterialShieldInstComboFinisher;
+
 	/* ---------------------------------- FUNCTIONS ----------------------------------- */
 
 	/* ************************ Animation Functions ************************* */
@@ -150,7 +173,11 @@ public:
 
 	// Unset Impair effect
 	UFUNCTION()
-		void RemoveImpairActive();
+		void RemoveImpairEffect();
+
+	// Unset Effect
+	UFUNCTION()
+		void RemoveEffect();
 
 	/* ********************** Attack Handler Functions ********************** */
 
@@ -161,6 +188,8 @@ public:
 		void KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+	UFUNCTION()
+		void StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	// Function for applying attack effects to enemy
 	UFUNCTION()
@@ -174,6 +203,14 @@ public:
 	UFUNCTION()
 		virtual void AttackExecuteServer(FString AttackName) override;
 
+	// Attack Effect Handler Start
+	UFUNCTION()
+		virtual void AttackEffectHandlerStart(int StencilValue) override;
+
+	// Attack Effect Handler End
+	UFUNCTION()
+		virtual void AttackEffectHandlerEnd(int StencilValue) override;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -181,4 +218,5 @@ protected:
 	FTimerHandle InvisibilityDelayTimerHandle;
 	FTimerHandle UnwaverDelayTimerHandle;
 	FTimerHandle ImpairDelayTimerHandle;
+	FTimerHandle FortifyDelayTimerHandle;
 };

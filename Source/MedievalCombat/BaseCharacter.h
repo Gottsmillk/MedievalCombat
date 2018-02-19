@@ -126,14 +126,7 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UCapsuleComponent* PlayerCollision2;
 
-	// Sword Mesh Object
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UStaticMeshComponent* Weapon;
-
 	// Weapon hurtboxes to trace attacks accurately
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* WeaponHurtboxBase;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 		class UBoxComponent* Hurtbox1;
 
@@ -171,6 +164,14 @@ public:
 
 	// Returns FollowCamera subobject
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	// Weapon hurtbox
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UBoxComponent* WeaponHurtboxBase;
+
+	// Sword Mesh Object
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+		class UStaticMeshComponent* Weapon;
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
@@ -432,6 +433,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		bool CurrentAttackHit = false;
 
+	// Whether SBasicAttack Landed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool SBasicAttackHit = false;
+
+	// Whether HBasicAttack Landed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+		bool HBasicAttackHit = false;
+
 	// Storing the previous attack for determining chaining
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		FString LastAttack = "";
@@ -463,6 +472,12 @@ public:
 	// Whether or not an ability/attack is detected, used for abilities that deactivate once an action is performed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
 		bool DetectMode = false;
+
+	/* ********************** Attack GFX Variables ********************** */
+
+	// Sets Attack Effect
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackGFX)
+		bool AttackEffectTrigger = false;
 
 /* ---------------------------------- FUNCTIONS ----------------------------------- */
 
@@ -724,12 +739,21 @@ public:
 			float Damage,
 			bool UseHitbox,
 			UBoxComponent* Hitbox,
-			bool Projectile
+			bool Projectile,
+			int Effect
 		);
 	UFUNCTION()
 		void AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
 	UFUNCTION()
 		void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox);
+
+	// Attack Effect Handler Start
+	UFUNCTION()
+		virtual void AttackEffectHandlerStart(int StencilValue);
+
+	// Attack Effect Handler End
+	UFUNCTION()
+		virtual void AttackEffectHandlerEnd(int StencilValue);
 
 	/* ********************** Timer Functions ********************** */
 	void onTimerEnd();

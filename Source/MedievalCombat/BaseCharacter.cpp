@@ -234,6 +234,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, ComboAmount);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
+	DOREPLIFETIME(ABaseCharacter, SBasicAttackHit);
+	DOREPLIFETIME(ABaseCharacter, HBasicAttackHit);
 	DOREPLIFETIME(ABaseCharacter, LastAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackName);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackType);
@@ -242,6 +244,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, UtilityArray);
 	DOREPLIFETIME(ABaseCharacter, ComboFinisherArray);
 	DOREPLIFETIME(ABaseCharacter, DetectMode);
+
+	// Attack GFX Variables
+	DOREPLIFETIME(ABaseCharacter, AttackEffectTrigger);
 }
 
 // Setup Inputs, overriden by children
@@ -454,11 +459,11 @@ void ABaseCharacter::HitboxHandler() {
 				InitialHitbox = false;
 				FillHitboxArray();
 			}
-			const FName TraceTag("MyTraceTag"); // Trace for debug
-			GetWorld()->DebugDrawTraceTag = TraceTag; // Trace for debug
+			//const FName TraceTag("MyTraceTag"); // Trace for debug
+			//GetWorld()->DebugDrawTraceTag = TraceTag; // Trace for debug
 
 			FCollisionQueryParams RV_TraceParams = FCollisionQueryParams(FName(TEXT("RV_Trace")), true, this);
-			RV_TraceParams.TraceTag = TraceTag; // Trace for debug
+			//RV_TraceParams.TraceTag = TraceTag; // Trace for debug
 			RV_TraceParams.bTraceComplex = true;
 			RV_TraceParams.bTraceAsyncScene = true;
 			RV_TraceParams.bReturnPhysicalMaterial = false;
@@ -525,6 +530,16 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 	if (Target->Invincible == false) {
 		Target->SendEventToAttacker(this);
 		if (Target->IsBlocking != true || GetPlayerDirections(Target) == false || BlockCheck == false) { // Incorrectly blocked
+			if (CurrentAttackName == "SBasicAttack") {
+				SBasicAttackHit = true;
+			}
+			else if (CurrentAttackName == "HBasicAttack") {
+				HBasicAttackHit = true;
+			}
+			if (CurrentAttackType == "ComboExtender") {
+				SBasicAttackHit = false;
+				HBasicAttackHit = false;
+			}
 			CurrentAttackHit = true;
 			ResilienceAttackReplenish += Damage;
 			Target->IsBlocking = false;
@@ -766,10 +781,18 @@ void ABaseCharacter::ResilienceDrainTimer() {
 
 // Event replenishing resilience after combos
 void ABaseCharacter::ResilienceReplenishEvent() {
-	if (AttackCastCooldown <= CurrentGameTime && ComboAmount > 0) {
-		ComboAmount = 0;
-		Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
-		ResilienceAttackReplenish = 0.0f;
+	if (AttackCastCooldown <= CurrentGameTime) {
+		if (AttackEffectTrigger == true) {
+			AttackEffectHandlerEnd(1);
+			AttackEffectTrigger = false;
+		}
+		if (ComboAmount > 0) {
+			ComboAmount = 0;
+			SBasicAttackHit = false;
+			HBasicAttackHit = false;
+			Resilience = UKismetMathLibrary::FClamp(Resilience + ResilienceAttackReplenish, 0.0f, 100.0f);
+			ResilienceAttackReplenish = 0.0f;
+		}
 	}
 }
 
@@ -858,6 +881,7 @@ bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
 // Roll event
 void ABaseCharacter::RollPressedEvent() {
 	if (MenuUp == false && IsRolling == false && IsSideStepping == false && Resilience >= 30 && GetCooldown("Roll") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		ResilienceDefenseReplenish = 0.0f;
 		Resilience -= 30;
 		IsRolling = true;
 		RollMovement = true;
@@ -1036,7 +1060,7 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 		return false;
 	}
 	if (CurrentAttack == "SBasicAttack") {
-		if (LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+		if ((LastAttack == "HBasicAttack" && SBasicAttackHit == false) || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
 			return true;
 		}
 		else {
@@ -1044,7 +1068,7 @@ bool ABaseCharacter::CheckChainable(FString CurrentAttack) {
 		}
 	}
 	else if (CurrentAttack == "HBasicAttack") {
-		if (LastAttack == "SBasicAttack" || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
+		if ((LastAttack == "SBasicAttack" && HBasicAttackHit == false) || LastAttack == "CounteringBlow" || LastAttack == "ComboExtender") {
 			return true;
 		}
 		else {
@@ -1102,7 +1126,7 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 }
 
 // Attack Handler
-void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
+void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile, int Effect) {
 	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, GetCooldownAmt(AttackName)) == true && MenuUp == false && CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
 		CanAttack = false;
 		CurrentAttackName = AttackName;
@@ -1113,6 +1137,7 @@ void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float
 		if (AttackName == "HBasicAttack" && ComboAmount == 0) {
 			HBasicAttackSuperArmor = true;
 		}
+		AttackEffectHandlerStart(Effect);
 		FTimerDelegate TimerDel;
 		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
 		GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, DelayBeforeHitbox, false);
@@ -1153,6 +1178,14 @@ void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, floa
 		CanAttack = true;
 	}
 	SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
+}
+
+// Attack Effect Handler Start
+void ABaseCharacter::AttackEffectHandlerStart(int StencilValue){
+}
+
+// Attack Effect Handler End
+void ABaseCharacter::AttackEffectHandlerEnd(int StencilValue){
 }
 
 /* ********************** Timer Functions ********************** */
