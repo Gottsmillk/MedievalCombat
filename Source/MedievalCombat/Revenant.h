@@ -38,6 +38,24 @@ public:
 
 	/* ---------------------------------- VARIABLES ----------------------------------- */
 
+	/* ********************** Attack Input Variables ********************** */
+
+		FInputActionBinding BlockPressBind = FInputActionBinding(FName("Block"), IE_Pressed);
+		FInputActionBinding BlockReleaseBind = FInputActionBinding(FName("Block"), IE_Released);
+		FInputActionBinding RollBind = FInputActionBinding(FName("Roll"), IE_Pressed);
+		FInputActionBinding SideStepBind = FInputActionBinding(FName("SideStep"), IE_Pressed);
+		FInputActionBinding BasicAttackBind = FInputActionBinding(FName("BasicAttack"), IE_Pressed);
+		FInputActionBinding HardAttackBind = FInputActionBinding(FName("HardAttack"), IE_Pressed);
+		FInputActionBinding CounteringBlowBind = FInputActionBinding(FName("CounteringBlow"), IE_Pressed);
+		FInputActionBinding ComboExtender1Bind = FInputActionBinding(FName("ComboExtender1"), IE_Pressed);
+		FInputActionBinding ComboExtender2Bind = FInputActionBinding(FName("ComboExtender2"), IE_Pressed);
+		FInputActionBinding ComboExtender3Bind = FInputActionBinding(FName("ComboExtender3"), IE_Pressed);
+		FInputActionBinding Utility1Bind = FInputActionBinding(FName("Utility1"), IE_Pressed);
+		FInputActionBinding Utility2Bind = FInputActionBinding(FName("Utility2"), IE_Pressed);
+		FInputActionBinding ComboFinisher1Bind = FInputActionBinding(FName("ComboFinisher1"), IE_Pressed);
+		FInputActionBinding ComboFinisher2Bind = FInputActionBinding(FName("ComboFinisher2"), IE_Pressed);
+
+
 	/* ********************** Animation Variables ********************** */
 
 	// Stores Attack Animations for SBasicAttack, animations are set in the blueprint
@@ -132,7 +150,6 @@ public:
 		void ResetSelectedAbilityArraysClient();
 
 	// Perfom final actions once "Submit" is pressed on the "Choose Attacks" UI
-	UFUNCTION(BlueprintCallable)
 		virtual void AddRemainingInputs() override;
 	UFUNCTION(Server, Reliable, WithValidation)
 		void AddRemainingInputsServer();
@@ -154,13 +171,11 @@ public:
 	/* *********************** Damage/Death Functions *********************** */
 
 	// Apply override so player who received damage can send events to player who dealt damage
-	UFUNCTION(BlueprintCallable)
 		virtual void SendEventToAttacker(ABaseCharacter* Attacker) override;
 
 	/* ********************** Attack Effect Functions ********************** */
 
 	// Function for detecting abilities
-	UFUNCTION()
 		virtual void DetectAction() override;
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
 		void TurnInvisibleRepAll();
@@ -192,23 +207,20 @@ public:
 		void StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	// Function for applying attack effects to enemy
-	UFUNCTION()
 		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName) override;
 
 	// Master function for converting inputs into their corresponding ability events
 	UFUNCTION(BlueprintCallable)
-		virtual void AttackExecute(FString AttackName) override;
+		void AttackExecute(FString AttackName);
 	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void AttackExecuteClientToServer(const FString &AttackName) override;
+		void AttackExecuteClientToServer(const FString &AttackName);
 	UFUNCTION()
-		virtual void AttackExecuteServer(FString AttackName) override;
+		void AttackExecuteServer(FString AttackName);
 
 	// Attack Effect Handler Start
-	UFUNCTION()
 		virtual void AttackEffectHandlerStart(int StencilValue) override;
 
 	// Attack Effect Handler End
-	UFUNCTION()
 		virtual void AttackEffectHandlerEnd(int StencilValue) override;
 
 protected:

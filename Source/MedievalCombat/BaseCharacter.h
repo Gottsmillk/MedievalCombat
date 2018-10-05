@@ -566,7 +566,6 @@ public:
 		void ApplyDamage(float Damage, ABaseCharacter * Attacker);
 
 	// Event when received damage from Blueprint function call, usually will not run this
-	UFUNCTION(BlueprintCallable)
 		void ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 	// Apply override so player who received damage can send events to player who dealt damage
@@ -700,14 +699,6 @@ public:
 	// Function for applying attack effects to enemy
 	UFUNCTION()
 		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName);
-
-	// Master function for converting inputs into their corresponding ability events
-	UFUNCTION(BlueprintCallable)
-		virtual void AttackExecute(FString AttackName);
-	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void AttackExecuteClientToServer(const FString &AttackName);
-	UFUNCTION()
-		virtual void AttackExecuteServer(FString AttackName);
 
 	// Function for detecting when an attack is cast, used for stealth abilities
 	UFUNCTION()

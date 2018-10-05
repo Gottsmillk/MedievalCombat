@@ -48,7 +48,7 @@ ARevenant::ARevenant() {
 	Shield = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Shield"));
 	Shield->SetVisibility(true);
 	Shield->SetHiddenInGame(false);
-	Shield->bGenerateOverlapEvents = false;
+	Shield->SetGenerateOverlapEvents(false);
 	FName ShieldSocket = TEXT("Shieldsocket");
 	Shield->SetupAttachment(GetMesh(), ShieldSocket);
 
@@ -59,7 +59,7 @@ ARevenant::ARevenant() {
 	CounteringBlowHurtbox->SetBoxExtent(FVector(50.0f, 50.0f, 50.0f));
 	CounteringBlowHurtbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CounteringBlowHurtbox->bDynamicObstacle = false;
-	CounteringBlowHurtbox->bGenerateOverlapEvents = true;
+	CounteringBlowHurtbox->SetGenerateOverlapEvents(true);
 	CounteringBlowHurtbox->SetupAttachment(GetMesh(), TEXT("Weaponsocket"));
 
 	// Staggering Kick hurtbox
@@ -69,7 +69,7 @@ ARevenant::ARevenant() {
 	KickHurtbox->SetBoxExtent(FVector(50.0f, 50.0f, 50.0f));
 	KickHurtbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	KickHurtbox->bDynamicObstacle = false;
-	KickHurtbox->bGenerateOverlapEvents = true;
+	KickHurtbox->SetGenerateOverlapEvents(true);
 	KickHurtbox->SetupAttachment(GetMesh(), TEXT("Kicksocket"));
 
 	// Powered Bash hurtbox
@@ -79,7 +79,7 @@ ARevenant::ARevenant() {
 	PoweredBashHurtbox->SetBoxExtent(FVector(50.0f, 50.0f, 50.0f));
 	PoweredBashHurtbox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PoweredBashHurtbox->bDynamicObstacle = false;
-	PoweredBashHurtbox->bGenerateOverlapEvents = true;
+	PoweredBashHurtbox->SetGenerateOverlapEvents(true);
 	PoweredBashHurtbox->SetupAttachment(GetMesh(), TEXT("Shieldsocket"));
 
 	// Set Shadow to be spawned
@@ -305,7 +305,6 @@ void ARevenant::ResetSelectedAbilityArraysClient() {
 
 // Perfom final actions once "Submit" is pressed on the "Choose Attacks" UI
 void ARevenant::AddRemainingInputs() {
-		FInputActionBinding ActionBind;
 	FInputActionHandlerSignature ActionBindHandler;
 
 	InputComponent->ClearActionBindings();
@@ -313,93 +312,76 @@ void ARevenant::AddRemainingInputs() {
 	// START OF DEFAULTS
 
 	// Add Block Press
-	ActionBind.ActionName = FName("Block");
-	ActionBind.KeyEvent = IE_Pressed;
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("BlockPress")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	BlockPressBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(BlockPressBind);
 
 	// Add Block Release
-	ActionBind.ActionName = FName("Block");
-	ActionBind.KeyEvent = IE_Released;
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("BlockRelease")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	BlockReleaseBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(BlockReleaseBind);
 
 	// Add Roll
-	ActionBind.ActionName = FName("Roll");
-	ActionBind.KeyEvent = IE_Pressed;
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("Roll")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	RollBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(RollBind);
 
 	// Add SideStep
-	ActionBind.ActionName = FName("SideStep");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("SideStep")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	SideStepBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(SideStepBind);
 
 	// Add BasicAttack
-	ActionBind.ActionName = FName("BasicAttack");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("SBasicAttack")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	BasicAttackBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(BasicAttackBind);
 
 	// Add HardAttack
-	ActionBind.ActionName = FName("HardAttack");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("HBasicAttack")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	HardAttackBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(HardAttackBind);
 
 	// Add CounteringBlow
-	ActionBind.ActionName = FName("CounteringBlow");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("CounteringBlow")));
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	CounteringBlowBind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(CounteringBlowBind);
 
 	// END OF DEFAULTS
 
 	// Add ComboExtender1
-	ActionBind.ActionName = FName("ComboExtender1");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[0]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	ComboExtender1Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(ComboExtender1Bind);
 
 	// Add ComboExtender2
-	ActionBind.ActionName = FName("ComboExtender2");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[1]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	ComboExtender2Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(ComboExtender2Bind);
 
 	// Add ComboExtender3
-	ActionBind.ActionName = FName("ComboExtender3");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[2]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	ComboExtender3Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(ComboExtender3Bind);
 
 	// Add Utility 1
-	ActionBind.ActionName = FName("Utility1");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), UtilityArray[0]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	Utility1Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(Utility1Bind);
 
 	// Add Utility 2
-	ActionBind.ActionName = FName("Utility2");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), UtilityArray[1]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	Utility2Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(Utility2Bind);
 
 	// Add ComboFinisher 1
-	ActionBind.ActionName = FName("ComboFinisher1");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboFinisherArray[0]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	ComboFinisher1Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(ComboFinisher1Bind);
 
 	// Add ComboFinisher 2
-	ActionBind.ActionName = FName("ComboFinisher2");
 	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboFinisherArray[1]);
-	ActionBind.ActionDelegate = ActionBindHandler;
-	InputComponent->AddActionBinding(ActionBind);
+	ComboFinisher2Bind.ActionDelegate = ActionBindHandler;
+	InputComponent->AddActionBinding(ComboFinisher2Bind);
 
 	if (this->HasAuthority()) {
 		AddRemainingInputsClient();
@@ -629,7 +611,7 @@ void ARevenant::RemoveEffect() {
 void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) { 
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
-		CounteringBlowHurtbox->bGenerateOverlapEvents = false;
+		CounteringBlowHurtbox->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
 	}
@@ -637,7 +619,7 @@ void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* Overlapp
 void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
-		KickHurtbox->bGenerateOverlapEvents = false;
+		KickHurtbox->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 
 		if (CurrentAttackName == "StaggeringKick") {
@@ -654,7 +636,7 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
-		PoweredBashHurtbox->bGenerateOverlapEvents = false;
+		PoweredBashHurtbox->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 		InflictDamage(AttackedTarget, CalcFinalDamage(5 + (ComboAmount * 3.0f), AttackedTarget), true, true, false);
 	}
@@ -662,7 +644,7 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 void ARevenant::StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
-		WeaponHurtboxBase->bGenerateOverlapEvents = false;
+		WeaponHurtboxBase->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 
 		if (CurrentAttackName == "LifeDrain") {

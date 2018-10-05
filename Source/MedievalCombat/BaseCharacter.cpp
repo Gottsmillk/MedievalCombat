@@ -52,7 +52,7 @@ ABaseCharacter::ABaseCharacter() {
 	PlayerAimCollision->InitCapsuleSize(70.0f, 120.0f);
 	PlayerAimCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PlayerAimCollision->bDynamicObstacle = true;
-	PlayerAimCollision->bGenerateOverlapEvents = false;
+	PlayerAimCollision->SetGenerateOverlapEvents(false);
 	PlayerAimCollision->SetupAttachment(RootComponent);
 
 	// Create a capsule component to avoid people going through eachother
@@ -61,7 +61,7 @@ ABaseCharacter::ABaseCharacter() {
 	PlayerCollision->InitCapsuleSize(70.0f, 120.0f);
 	PlayerCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PlayerCollision->bDynamicObstacle = true;
-	PlayerCollision->bGenerateOverlapEvents = false;
+	PlayerCollision->SetGenerateOverlapEvents(false);
 	PlayerCollision->SetupAttachment(RootComponent);
 
 	// Create a capsule component to avoid people going through eachother
@@ -70,7 +70,7 @@ ABaseCharacter::ABaseCharacter() {
 	PlayerCollision2->InitCapsuleSize(90.0f, 120.0f);
 	PlayerCollision2->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PlayerCollision2->bDynamicObstacle = true;
-	PlayerCollision2->bGenerateOverlapEvents = true;
+	PlayerCollision2->SetGenerateOverlapEvents(true);
 	PlayerCollision2->SetupAttachment(RootComponent);
 	PlayerCollision2->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::PlayerCollision2Begin);
 	PlayerCollision2->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::PlayerCollision2End);
@@ -79,7 +79,7 @@ ABaseCharacter::ABaseCharacter() {
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
 	Weapon->SetVisibility(false);
 	Weapon->SetHiddenInGame(true);
-	Weapon->bGenerateOverlapEvents = false;
+	Weapon->SetGenerateOverlapEvents(false);
 
 	/***** Create weapon hurtboxes *****/
 	// Weapon Hurtbox Base
@@ -89,7 +89,7 @@ ABaseCharacter::ABaseCharacter() {
 	WeaponHurtboxBase->SetBoxExtent(FVector(0.6f, 0.22f, 32.0f));
 	WeaponHurtboxBase->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	WeaponHurtboxBase->bDynamicObstacle = false;
-	WeaponHurtboxBase->bGenerateOverlapEvents = true;
+	WeaponHurtboxBase->SetGenerateOverlapEvents(true);
 	WeaponHurtboxBase->SetupAttachment(Weapon);
 
 	// Hurtbox1
@@ -99,7 +99,7 @@ ABaseCharacter::ABaseCharacter() {
 	Hurtbox1->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
 	Hurtbox1->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox1->bDynamicObstacle = false;
-	Hurtbox1->bGenerateOverlapEvents = false;
+	Hurtbox1->SetGenerateOverlapEvents(false);
 	Hurtbox1->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox2
@@ -109,7 +109,7 @@ ABaseCharacter::ABaseCharacter() {
 	Hurtbox2->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
 	Hurtbox2->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox2->bDynamicObstacle = false;
-	Hurtbox2->bGenerateOverlapEvents = false;
+	Hurtbox2->SetGenerateOverlapEvents(false);
 	Hurtbox2->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox3
@@ -119,7 +119,7 @@ ABaseCharacter::ABaseCharacter() {
 	Hurtbox3->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
 	Hurtbox3->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox3->bDynamicObstacle = false;
-	Hurtbox3->bGenerateOverlapEvents = false;
+	Hurtbox3->SetGenerateOverlapEvents(false);
 	Hurtbox3->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox4
@@ -129,7 +129,7 @@ ABaseCharacter::ABaseCharacter() {
 	Hurtbox4->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
 	Hurtbox4->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox4->bDynamicObstacle = false;
-	Hurtbox4->bGenerateOverlapEvents = false;
+	Hurtbox4->SetGenerateOverlapEvents(false);
 	Hurtbox4->SetupAttachment(WeaponHurtboxBase);
 
 	// Hurtbox5
@@ -139,7 +139,7 @@ ABaseCharacter::ABaseCharacter() {
 	Hurtbox5->SetBoxExtent(FVector(0.5f, 0.5f, 0.5f));
 	Hurtbox5->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Hurtbox5->bDynamicObstacle = false;
-	Hurtbox5->bGenerateOverlapEvents = false;
+	Hurtbox5->SetGenerateOverlapEvents(false);
 	Hurtbox5->SetupAttachment(WeaponHurtboxBase);
 
 	// Store the hurtboxes inside the hitbox component array
@@ -1039,17 +1039,6 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 }
 
-// Master function for converting inputs into their corresponding ability events
-void ABaseCharacter::AttackExecute(FString AttackName) {
-}
-void ABaseCharacter::AttackExecuteClientToServer_Implementation(const FString &AttackName) {
-}
-bool ABaseCharacter::AttackExecuteClientToServer_Validate(const FString &AttackName) {
-	return true;
-}
-void ABaseCharacter::AttackExecuteServer(FString AttackName) {
-}
-
 // Function for detecting when an attack is cast, used for stealth abilities
 void ABaseCharacter::DetectAction() {
 }
@@ -1153,7 +1142,7 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 			HurtboxActive = true;
 		}
 		else if (UseHitbox == true) {
-			Hitbox->bGenerateOverlapEvents = true;
+			Hitbox->SetGenerateOverlapEvents(true);
 		}
 		else if (Projectile == true) {
 			ProjectileHandler(AttackName);
@@ -1168,7 +1157,7 @@ void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, floa
 void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
 	MakeCurrentActionLastAction(AttackType);
 	if (UseHitbox == true) {
-		Hitbox->bGenerateOverlapEvents = false;
+		Hitbox->SetGenerateOverlapEvents(false);
 	}
 	SetCooldown("BlockPress", .2);
 	HurtboxActive = false;
