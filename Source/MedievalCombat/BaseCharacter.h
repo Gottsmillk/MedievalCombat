@@ -12,91 +12,100 @@
 /* ------------------------------------ STRUCTS ----------------------------------- */
 
 USTRUCT(BlueprintType)
-struct FSpeedModifierStruct {
+struct FSpeedModifierStruct
+{
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Modifier;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Modifier;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Cooldown;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Cooldown;
 
-		FSpeedModifierStruct(float Modifier2 = 0.0f, float SpeedCooldown2 = 0.0f) {
-			Modifier = Modifier2;
-			Cooldown = SpeedCooldown2;
-		}
-}; 
-
-USTRUCT(BlueprintType)
-struct FAttackModifierStruct {
-	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Modifier;
-
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Cooldown;
-
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			int NumHits;
+	FSpeedModifierStruct(float Modifier2 = 0.0f, float SpeedCooldown2 = 0.0f)
+	{
+		Modifier = Modifier2;
+		Cooldown = SpeedCooldown2;
+	}
 };
 
 USTRUCT(BlueprintType)
-struct FDefenseModifierStruct {
+struct FAttackModifierStruct
+{
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Modifier;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Modifier;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Cooldown;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Cooldown;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			int NumHits;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int NumHits;
 };
 
 USTRUCT(BlueprintType)
-struct FCooldownEffectsStruct {
+struct FDefenseModifierStruct
+{
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Modifier;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Modifier;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			FString AbilityName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Cooldown;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Duration;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int NumHits;
 };
 
 USTRUCT(BlueprintType)
-struct FDamageTableStruct {
+struct FCooldownEffectsStruct
+{
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			FString Attack;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Modifier;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Damage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString AbilityName;
 
-		FDamageTableStruct(FString Attack2 = "", float Damage2 = 0.0f) {
-			Attack = Attack2;
-			Damage = Damage2;
-		}
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Duration;
 };
 
 USTRUCT(BlueprintType)
-struct FAttackStruct {
+struct FDamageTableStruct
+{
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			FString AttackName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Attack;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float Cooldown;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Damage;
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-			float CooldownAmt;
+	FDamageTableStruct(FString Attack2 = "", float Damage2 = 0.0f)
+	{
+		Attack = Attack2;
+		Damage = Damage2;
+	}
+};
 
-		FAttackStruct(FString AttackName2 = "", float Cooldown2 = 0.0f, float CooldownAmt2 = 0.0f) {
-			AttackName = AttackName2;
-			Cooldown = Cooldown2;
-			CooldownAmt = CooldownAmt2;
-		}
+USTRUCT(BlueprintType)
+struct FAttackStruct
+{
+	GENERATED_USTRUCT_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString AttackName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Cooldown;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float CooldownAmt;
+
+	FAttackStruct(FString AttackName2 = "", float Cooldown2 = 0.0f, float CooldownAmt2 = 0.0f)
+	{
+		AttackName = AttackName2;
+		Cooldown = Cooldown2;
+		CooldownAmt = CooldownAmt2;
+	}
 };
 
 UCLASS(config = Game)
@@ -104,47 +113,46 @@ class MEDIEVALCOMBAT_API ABaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-/* ---------------------------------- COMPONENTS ---------------------------------- */
+	/* ---------------------------------- COMPONENTS ---------------------------------- */
 
 	// Camera boom positioning the camera behind the character (SpringArm)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class USpringArmComponent* CameraBoom;
+	class USpringArmComponent *CameraBoom;
 
 	// Main camera that follows the player
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* FollowCamera;
+	class UCameraComponent *FollowCamera;
 
 	// Capsule collision commponent that checks if player is aiming in the enemy's general direction
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCapsuleComponent* PlayerAimCollision;
+	class UCapsuleComponent *PlayerAimCollision;
 
 	// Capsule collision component that prevents players from going through each other
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCapsuleComponent* PlayerCollision;
-	
+	class UCapsuleComponent *PlayerCollision;
+
 	// Capsule collision commponent that checks if players should stay in place or move when attacking
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UCapsuleComponent* PlayerCollision2;
+	class UCapsuleComponent *PlayerCollision2;
 
 	// Weapon hurtboxes to trace attacks accurately
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* Hurtbox1;
+	class UBoxComponent *Hurtbox1;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* Hurtbox2;
+	class UBoxComponent *Hurtbox2;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* Hurtbox3;
+	class UBoxComponent *Hurtbox3;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* Hurtbox4;
+	class UBoxComponent *Hurtbox4;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* Hurtbox5;
+	class UBoxComponent *Hurtbox5;
 
-public:
-
-/* ------------------------------- INITIALIZATIONS -------------------------------- */
+  public:
+	/* ------------------------------- INITIALIZATIONS -------------------------------- */
 
 	// Sets default values for this character's properties
 	ABaseCharacter();
@@ -153,603 +161,609 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
 
-/* ---------------------------------- VARIABLES ----------------------------------- */
+	/* ---------------------------------- VARIABLES ----------------------------------- */
 
 	/* ****************************** Defaults ****************************** */
 
 	// Returns CameraBoom subobject
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	FORCEINLINE class USpringArmComponent *GetCameraBoom() const { return CameraBoom; }
 
 	// Returns FollowCamera subobject
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE class UCameraComponent *GetFollowCamera() const { return FollowCamera; }
 
 	// Weapon hurtbox
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UBoxComponent* WeaponHurtboxBase;
+	class UBoxComponent *WeaponHurtboxBase;
 
 	// Sword Mesh Object
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-		class UStaticMeshComponent* Weapon;
+	class UStaticMeshComponent *Weapon;
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Vanilla)
-		float CurrentGameTime = 0.0f;
+	float CurrentGameTime = 0.0f;
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		float XSensitivity = 0.2f;
+	float XSensitivity = 0.2f;
 
 	// Keeps track of the client's local game time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		float YSensitivity = 0.2f;
+	float YSensitivity = 0.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		TSubclassOf<AActor> BlockedFX;
+	TSubclassOf<AActor> BlockedFX;
 
 	/* *************** Variables loaded from child blueprint **************** */
 
 	// Returns the custom Character Movement component provided by Advanced Locomotion plugin
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vanilla)
-		UCharacterMovementComponent* CharMovement;
+	UCharacterMovementComponent *CharMovement;
 
 	// Returns the Camera Shake blueprint for the Damage Indicator
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = CharacterInfo)
-		TSubclassOf <UCameraShake> PlayerTakeDamageCameraShake;
+	TSubclassOf<UCameraShake> PlayerTakeDamageCameraShake;
 
 	/* ************************ Projectile Variables ************************ */
 
 	// Vector storing the maximum range a projectile can be shot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
-		FVector MaxProjectileRange;
+	FVector MaxProjectileRange;
 
 	// Instantiation of base projectile blueprint
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
-		TSubclassOf<AProjectileBase> BaseProjectile;
+	TSubclassOf<AProjectileBase> BaseProjectile;
 
 	/* **************************** UI Variables ***************************** */
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UWidgetComponent * HPOverhead;
-		
+	class UWidgetComponent *HPOverhead;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UWidgetComponent * UsernameOverhead;
+	class UWidgetComponent *UsernameOverhead;
 
 	// Indicates whether a UI menu is up or not
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)
-		FString Username = "";
+	FString Username = "";
 
 	// Indicates whether a UI menu is up or not
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = UI)
-		bool MenuUp = true;
+	bool MenuUp = true;
 
 	// Reference UMG Asset in the Editor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widgets")
-		TSubclassOf<class UDamageNumberDisplay> DamageDisplayConst;
+	TSubclassOf<class UDamageNumberDisplay> DamageDisplayConst;
 
 	// Variable to hold the widget After Creating it.
-		UDamageNumberDisplay* DamageDisplay;
-
+	UDamageNumberDisplay *DamageDisplay;
 
 	/* ********************* Damage Indicator Variables ********************* */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = DamageIndicator)
-		UMaterialParameterCollection* TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/DamageIndicators/DamageIndicatorPower.DamageIndicatorPower"));
+	UMaterialParameterCollection *TempParamCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/Menus/DamageIndicators/DamageIndicatorPower.DamageIndicatorPower"));
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float CurrentDamageIndicator = 0;
+	float CurrentDamageIndicator = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float MaxDamageIndicator = 2.0f;
+	float MaxDamageIndicator = 2.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float MinDamageIndicator = 0;
+	float MinDamageIndicator = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float DesiredDamageIndicator = 0;
+	float DesiredDamageIndicator = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float DamageIndicatorSpeed = 5.0f;
+	float DamageIndicatorSpeed = 5.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float LowHealthIndicatorPower = 0;
+	float LowHealthIndicatorPower = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = DamageIndicator)
-		float DamageDeltaTime = 0;
+	float DamageDeltaTime = 0;
 
 	/* ************************** Hitbox Variables ************************** */
 
 	// Array containing all of the weapon hurtbox components
 	UPROPERTY(EditAnywhere, Category = Hitbox)
-		UShapeComponent* HitboxComponentArray[6];
+	UShapeComponent *HitboxComponentArray[6];
 
 	// Array keeping track of hurtbox component's current position in world space
 	UPROPERTY(EditAnywhere, Category = Hitbox)
-		FVector HitboxArray[6];
+	FVector HitboxArray[6];
 
 	// Allows proper setting of the hitbox on the very first tick of attacking
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
-		bool InitialHitbox = true;
+	bool InitialHitbox = true;
 
 	// Whether or not hurtbox is active when attacking
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Hitbox)
-		bool HurtboxActive = false;
+	bool HurtboxActive = false;
 
 	/* ************************** Flinch Variables *************************** */
 
 	// Whether or not the player is currently flinching
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
-		bool Flinched = false;
+	bool Flinched = false;
 
 	// Prevents player from flinching
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
-		bool SuperArmor = false;
+	bool SuperArmor = false;
 
 	// Give super armor to HBasicAttack, gave it its own variable because of Timer channel issues
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Flinch)
-		bool HBasicAttackSuperArmor = false;
+	bool HBasicAttackSuperArmor = false;
 
 	/* ************************** Health Variables ************************** */
 
 	// Keeps track of current health
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Health)
-		float Health = 100.0;
+	float Health = 100.0;
 
 	// Keeps track of maximum health
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
-		float MaxHealth = 100.0;
+	float MaxHealth = 100.0;
 
 	/* ********************* Damage and Death Variables ********************* */
 
-	// Raw damage of the current attack before buffs/debuffs 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
-		float CurrentDamage = 0.0f;
-
 	// Whether or not you are in an iframe
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
-		bool Invincible = false;
+	bool Invincible = false;
 
 	// Whether or not you got scattershot by a Hanzo main
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
-		bool IsDead = false;
+	bool IsDead = false;
 
 	// Array that stores damage values of attacks that have static damage
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Damage)
-		TArray<FDamageTableStruct> DamageTable;
+	TArray<FDamageTableStruct> DamageTable;
 
 	// Array that stores buff values
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
-		TArray<FAttackModifierStruct> AttackModifierArray;
+	TArray<FAttackModifierStruct> AttackModifierArray;
 
 	// Array that stores debuff values
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
-		TArray<FDefenseModifierStruct> DefenseModifierArray;
+	TArray<FDefenseModifierStruct> DefenseModifierArray;
 
 	/* ************************* Cooldown Variables ************************* */
 
 	// Keeps track of cast cooldown for non chaining attacks
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Cooldowns)
-		float AttackCastCooldown = 0;
+	float AttackCastCooldown = 0;
 
 	// Array storing cooldown buffs/debuffs
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Cooldowns)
-		TArray<FCooldownEffectsStruct> CooldownEffectsArray;
+	TArray<FCooldownEffectsStruct> CooldownEffectsArray;
 
 	/* ************************ Resilience Variables ************************ */
 
 	// Keeps track of Resilience
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float Resilience = 100.0;
+	float Resilience = 100.0;
 
 	// Keeps track of the drain rate of resilience per second
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceDrainAmt = 5.0;
+	float ResilienceDrainAmt = 5.0;
 
 	// Keeps track of regen rate of resilience per second
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceRegenAmt = 5.0;
+	float ResilienceRegenAmt = 5.0;
 
 	// Keeps track of how much resilience to replenish the attacker after a combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceAttackReplenish = 0.0f;
+	float ResilienceAttackReplenish = 0.0f;
 
 	// Keeps track of how much resilience to replenish the defender after a combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		float ResilienceDefenseReplenish = 0.0f;
+	float ResilienceDefenseReplenish = 0.0f;
 
 	// Whether or not to subtract the initial drain amount from pressing block
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Resilience)
-		bool BlockSubtractResilience = false;
+	bool BlockSubtractResilience = false;
 
 	/* ********************** Block Handler Variables *********************** */
 
 	// Whether or not the block button was pressed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool BlockPressed = false;
+	bool BlockPressed = false;
 
 	// Whether or not the player is allowed to block despite the block button is pressed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		bool IsBlocking = false;
+	bool IsBlocking = false;
 
 	// Used to communicate block animation threshold to the Animation Blueprint
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = BlockHandler)
-		float BlockingAnim = 0.0;
+	float BlockingAnim = 0.0;
 
 	/* ********************** Roll/Sidestep Variables *********************** */
 
 	// Whether player is rolling
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
-		bool IsRolling = false;
+	bool IsRolling = false;
 
 	// Whether player moves while rolling
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
-		bool RollMovement = false;
+	bool RollMovement = false;
 
 	// Whether player is sidestepping
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = RollSidestep)
-		bool IsSideStepping = false;
+	bool IsSideStepping = false;
 
 	/* ************************* Movement Variables ************************* */
 
 	// Whether or not player can move
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		bool CanMove = true;
+	bool CanMove = true;
 
 	// Whether or not player can move the camera
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		bool CanTurn = true;
+	bool CanTurn = true;
 
 	// Keeps track of player's forward/backward motion for determining which way to roll
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		float CurrentFBLoc = 0;
+	float CurrentFBLoc = 0;
 
 	// Keeps track of player's left/right motion for determining which way to roll
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		float CurrentLRLoc = 0;
+	float CurrentLRLoc = 0;
 
 	// Whether or not player should attack in place or move
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		bool Colliding = false;
+	bool Colliding = false;
 
 	// Whether or not player is within certain range to check if they should attack in place or move
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		bool Overlapping = false;
+	bool Overlapping = false;
 
 	// Array storing speed buffs/debuffs
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Movement)
-		TArray<FSpeedModifierStruct> SpeedEffectsArray;
+	TArray<FSpeedModifierStruct> SpeedEffectsArray;
 
 	/* ********************** Attack Handler Variables ********************** */
 
+	// Queued Attack for Next attack
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+	FString QueuedAttack = "";
+
 	// Number of hits in an ongoing combo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		int ComboAmount = 0;
+	int ComboAmount = 0;
 
 	// Whether or not there is an ongoing attack
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool CanAttack = true;
+	bool CanAttack = true;
 
 	// Whether or not the current attack landed or missed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool CurrentAttackHit = false;
+	bool CurrentAttackHit = false;
 
 	// Whether SBasicAttack Landed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool SBasicAttackHit = false;
+	bool SBasicAttackHit = false;
 
 	// Whether HBasicAttack Landed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool HBasicAttackHit = false;
+	bool HBasicAttackHit = false;
 
 	// Storing the previous attack for determining chaining
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		FString LastAttack = "";
+	FString LastAttack = "";
 
 	// Storing the current attack to pass to targets and UI
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		FString CurrentAttackName = "";
+	FString CurrentAttackName = "";
 
 	// Storing the current attack type for display onto UI
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		FString CurrentAttackType = "";
+	FString CurrentAttackType = "";
 
 	// Stores attack cooldowns and attack cooldown amounts
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		TArray<FAttackStruct> AttackArray;
+	TArray<FAttackStruct> AttackArray;
 
 	// Stores the combo extenders selected by the Choose Attacks UI for cross-Blueprint interaction
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		TArray<FString> ComboExtenderArray;
+	TArray<FString> ComboExtenderArray;
 
 	// Stores the utilites selected by the Choose Attacks UI for cross-Blueprint interaction
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		TArray<FString> UtilityArray;
+	TArray<FString> UtilityArray;
 
 	// Stores the combo finishers selected by the Choose Attacks UI for cross-Blueprint interaction
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		TArray<FString> ComboFinisherArray;
-	
+	TArray<FString> ComboFinisherArray;
+
 	// Whether or not an ability/attack is detected, used for abilities that deactivate once an action is performed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
-		bool DetectMode = false;
+	float CurrentCastCooldownAmt = 0.0f;
+
+	// Whether or not an ability/attack is detected, used for abilities that deactivate once an action is performed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+	bool CurrentUseHitbox = false;
+
+	// Whether or not an ability/attack is detected, used for abilities that deactivate once an action is performed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+	UBoxComponent *CurrentHitbox = NULL;
+
+	// Whether or not an ability/attack is detected, used for abilities that deactivate once an action is performed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackHandler)
+	bool DetectMode = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FTimerHandle AttackDelayTimerHandle;
 
 	/* ********************** Attack GFX Variables ********************** */
 
 	// Sets Attack Effect
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = AttackGFX)
-		bool AttackEffectTrigger = false;
+	bool AttackEffectTrigger = false;
 
-/* ---------------------------------- FUNCTIONS ----------------------------------- */
+	/* ---------------------------------- FUNCTIONS ----------------------------------- */
 
 	/* ************************* Default Functions ************************* */
 
 	// Make weapon visible
 	UFUNCTION()
-		void WeaponVisibility(bool set);
+	void WeaponVisibility(bool set);
 
 	// Create Particle Effects
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void InitializeParticle(TSubclassOf<AActor> Particle, FVector Location, bool Bind);
+	void InitializeParticle(TSubclassOf<AActor> Particle, FVector Location, bool Bind);
 
 	/* *********************** Projectile Functions ************************* */
 
 	// Shoot projectiles
 	UFUNCTION(BlueprintCallable)
-		void ProjectileHandler(FString AttackName);
+	void ProjectileHandler(FString AttackName);
 
 	/* ************************ Animation Functions ************************* */
 
 	// Play an animation montage
 	UFUNCTION()
-		void PlayActionAnim(UAnimMontage* Animation, float Speed);
+	void PlayActionAnim(UAnimMontage *Animation, float Speed);
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void PlayActionAnimServer(UAnimMontage* Animation, float Speed);
+	void PlayActionAnimServer(UAnimMontage *Animation, float Speed);
 
 	// Force all ongoing montages to stop
 	UFUNCTION()
-		void StopAnimations();
+	void StopAnimations();
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-		void StopAnimationsServer();
+	void StopAnimationsServer();
 
 	// Set Block animation for interacting with animation blueprint
 	UFUNCTION(BlueprintCallable)
-		void BlockAnimation();
+	void BlockAnimation();
 
 	/* **************************** UI Functions **************************** */
 
 	// Perfom final actions once "Submit" is pressed on the "Choose Attacks" UI
 	UFUNCTION(BlueprintCallable)
-		virtual void AddRemainingInputs();
+	virtual void AddRemainingInputs();
 
 	/* ********************* Damage Indicator Functions ********************* */
 
 	// Damage Indicator per Tick Function for controlling display values
 	UFUNCTION(BlueprintNativeEvent)
-		void DamageIndicatorTick();
+	void DamageIndicatorTick();
 
 	// Add hitsplat when damage received
 	UFUNCTION(Client, Reliable)
-		void InitiateDamageEffect();
+	void InitiateDamageEffect();
 
 	// Add Damage Number Effect
 	UFUNCTION(NetMulticast, Reliable)
-		void InitiateDamageNumberEffect(float Damage, ABaseCharacter * Target);
+	void InitiateDamageNumberEffect(float Damage, ABaseCharacter *Target);
 
 	/* ************************** Hitbox Functions ************************** */
 
 	// Fill array of hitbox component vectors for HitboxHandler
 	UFUNCTION()
-		void FillHitboxArray();
+	void FillHitboxArray();
 
 	// Hitbox Handler for attacks
 	UFUNCTION(BlueprintCallable)
-		void HitboxHandler();
+	void HitboxHandler();
 
 	/* ************************** Flinch Functions ************************** */
 
 	// Flinch Event
 	UFUNCTION(BlueprintCallable)
-		void FlinchEvent();
+	void FlinchEvent();
 	UFUNCTION()
-		void FlinchEvent2();
+	void FlinchEvent2();
 
 	/* *********************** Damage/Death Functions *********************** */
 
 	// Event when hitbox comes in contact with player
 	UFUNCTION()
-		void WeaponHitEvent(FHitResult HitResult);
+	void WeaponHitEvent(FHitResult HitResult);
 
 	// Deal Damage to player
 	UFUNCTION(BlueprintCallable)
-		bool InflictDamage(ABaseCharacter* Target, float Damage, bool BlockCheck, bool Flinches, bool DoT);
+	bool InflictDamage(ABaseCharacter *Target, float Damage, bool BlockCheck, bool Flinches, bool DoT);
 	UFUNCTION(BlueprintCallable)
-		void ApplyDamage(float Damage, ABaseCharacter * Attacker);
+	void ApplyDamage(float Damage, ABaseCharacter *Attacker);
 
 	// Event when received damage from Blueprint function call, usually will not run this
-		void ReceiveAnyDamage(float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
+	void ReceiveAnyDamage(float Damage, const UDamageType *DamageType, AController *InstigatedBy, AActor *DamageCauser);
 
 	// Apply override so player who received damage can send events to player who dealt damage
 	UFUNCTION(BlueprintCallable)
-		virtual void SendEventToAttacker(ABaseCharacter* Attacker);
+	virtual void SendEventToAttacker(ABaseCharacter *Attacker);
 
 	// Deal damage over time to player
 	UFUNCTION(BlueprintCallable)
-		void ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt, ABaseCharacter* Attacker);
+	void ApplyDamageOverTime(FString Type, float DamageAmt, int Amount, float StartDelay, float IncrementAmt, ABaseCharacter *Attacker);
 
 	// Add Damage buff/debuff
 	UFUNCTION(BlueprintCallable)
-		void AddDamageModifier(float Modifier, float Duration, int NumHits);
+	void AddDamageModifier(float Modifier, float Duration, int NumHits);
 
 	// Add Defense buff/debuff
 	UFUNCTION(BlueprintCallable)
-		void AddDefenseModifier(float Modifier, float Duration, int NumHits);
+	void AddDefenseModifier(float Modifier, float Duration, int NumHits);
 
 	// Get base damage for attack
 	UFUNCTION(BlueprintCallable)
-		float GetDamage(FString AttackName);
+	float GetDamage(FString AttackName);
 
 	// Calculate final damage value based on damage and defense buffs/debuffs
 	UFUNCTION(BlueprintCallable)
-		float CalcFinalDamage(float Damage, ABaseCharacter* Target);
+	float CalcFinalDamage(float Damage, ABaseCharacter *Target);
 
 	// Events fired when a character dies
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ServerDeath(ABaseCharacter* Attacker);
+	void ServerDeath(ABaseCharacter *Attacker);
 
 	/* ************************ Cooldown Functions ************************* */
 
 	// Add Cooldown Buff/Debuff
 	UFUNCTION(BlueprintCallable)
-		void AddCooldownModifier(float Modifier, FString AbilityName, float Duration);
+	void AddCooldownModifier(float Modifier, FString AbilityName, float Duration);
 
 	// Get default cooldown amount for an attack
 	UFUNCTION(BlueprintCallable)
-		float GetCooldownAmt(FString AttackName);
+	float GetCooldownAmt(FString AttackName);
 
 	// Get active cooldown time for attack
 	UFUNCTION(BlueprintCallable)
-		float GetCooldown(FString AttackName);
+	float GetCooldown(FString AttackName);
 
 	// Set active cooldown time for attack for server and owning client
 	UFUNCTION(BlueprintCallable)
-		void SetCooldown(FString AttackName, float CooldownAmt);
+	void SetCooldown(FString AttackName, float CooldownAmt);
 	UFUNCTION(Client, Reliable)
-		void SetCooldownClient(const FString &AttackName, float CooldownAmt);
+	void SetCooldownClient(const FString &AttackName, float CooldownAmt);
 	UFUNCTION()
-		void SetCooldownAll(FString AttackName, float CooldownAmt);
+	void SetCooldownAll(FString AttackName, float CooldownAmt);
 
 	// Calculate Cooldown Amount after cooldown buffs and debuffs
 	UFUNCTION()
-		float GetFinalCooldownAmt(FString AttackName, float CooldownAmt);
+	float GetFinalCooldownAmt(FString AttackName, float CooldownAmt);
 
 	/* *********************** Resilience Functions ************************* */
 
 	// Event for resilience regen
 	UFUNCTION()
-		void ResilienceRegenTimer();
+	void ResilienceRegenTimer();
 
 	// Event for resilience drain
 	UFUNCTION()
-		void ResilienceDrainTimer();
+	void ResilienceDrainTimer();
 
 	// Event replenishing resilience after combos
 	UFUNCTION()
-		void ResilienceReplenishEvent();
+	void ResilienceReplenishEvent();
 
 	/* ************************** Block Functions *************************** */
 
 	// Events executing upon block event
 	UFUNCTION()
-		void BlockPressedEvent();
+	void BlockPressedEvent();
 	UFUNCTION()
-		void BlockReleasedEvent();
+	void BlockReleasedEvent();
 
 	// Block Handler
 	UFUNCTION(BlueprintCallable)
-		void BlockHandler();
+	void BlockHandler();
 
 	// Function for finding if two players are within 90 degrees of facing eachother
 	UFUNCTION(BlueprintCallable)
-		bool GetPlayerDirections(AActor * Attacked);
+	bool GetPlayerDirections(AActor *Attacked);
 
 	/* ********************** Roll/Sidestep Functions *********************** */
 
 	// Roll event
 	UFUNCTION()
-		void RollPressedEvent();
+	void RollPressedEvent();
 	UFUNCTION()
-		void RollPressedEvent2();
+	void RollPressedEvent2();
 	UFUNCTION()
-		void RollPressedEvent3();
+	void RollPressedEvent3();
 
 	// SideStep event
 	UFUNCTION()
-		void SideStepPressedEvent();
+	void SideStepPressedEvent();
 	UFUNCTION()
-		void SideStepPressedEvent2();
+	void SideStepPressedEvent2();
 
 	/* ************************* Movement Functions ************************* */
 
 	// Movement Handler for determining roll/sidestep/normal movement
 	UFUNCTION()
-		void MovementHandler();
+	void MovementHandler();
 
 	// Calculate final speed
 	UFUNCTION(BlueprintCallable)
-		float GetSpeedAmt();
+	float GetSpeedAmt();
 
 	// Add speed buff/debuff
 	UFUNCTION(BlueprintCallable)
-		void AddSpeedModifier(float Modifier, float Duration);
+	void AddSpeedModifier(float Modifier, float Duration);
 
 	// PlayerCollision2 begin overlap for determining if player is within range of other player
 	UFUNCTION()
-		void PlayerCollision2Begin(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void PlayerCollision2Begin(class UPrimitiveComponent *OverlappingComp, class AActor *OtherActor, class UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
 
 	// PlayerCollision2 end overlap for determining if player is within range of other player
 	UFUNCTION()
-		void PlayerCollision2End(class UPrimitiveComponent* OverlappingComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	void PlayerCollision2End(class UPrimitiveComponent *OverlappingComp, class AActor *OtherActor, class UPrimitiveComponent *OtherComp, int32 OtherBodyIndex);
 
 	// Function for checking if player should move during attack or stay still
 	UFUNCTION(BlueprintCallable)
-		void CheckMoveDuringAttack();
+	void CheckMoveDuringAttack();
 
 	/* ********************** Attack Handler Functions ********************** */
 
+	// Allowing the next Queued Attack to execute
+	UFUNCTION(BlueprintCallable)
+	virtual void QueueAttackHandler();
+
+	// Allowing the next Queued Attack to execute
+	UFUNCTION(BlueprintCallable)
+	virtual void QueueAttack(FString AttackName);
+
 	// Function for applying attack effects to enemy
 	UFUNCTION()
-		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName);
+	virtual void AttackEffect(ABaseCharacter *Target, FString AttackName);
 
 	// Function for detecting when an attack is cast, used for stealth abilities
 	UFUNCTION()
-		virtual void DetectAction();
+	virtual void DetectAction();
 
 	// Checks if the current attack should be chainable
 	UFUNCTION(BlueprintCallable)
-		bool CheckChainable(FString CurrentAttack);
+	bool CheckChainable(FString CurrentAttack);
 
 	// Checks if the current attack should be carried out
 	UFUNCTION(BlueprintCallable)
-		bool IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt);
+	bool IsValidAttack(bool IsChainable, float CastCooldownAmt, FString CurrentAttack, float CooldownAmt);
 
 	// Moves current action to last action for attack handler
 	UFUNCTION(BlueprintCallable)
-		void MakeCurrentActionLastAction(FString CurrentAttack);
-
-	// Attack Handler
-	UFUNCTION(BlueprintCallable)
-		void AttackHandler(
-			FString AttackName,
-			FString AttackType,
-			float CastCooldownAmt,
-			float CastSpeed,
-			bool IsChainable,
-			UAnimMontage* Animation,
-			float DelayBeforeHitbox,
-			float LengthOfHitbox,
-			float Damage,
-			bool UseHitbox,
-			UBoxComponent* Hitbox,
-			bool Projectile,
-			int Effect
-		);
-	UFUNCTION()
-		void AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
-	UFUNCTION()
-		void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox);
+	void MakeCurrentActionLastAction(FString CurrentAttack);
 
 	// Attack Effect Handler Start
 	UFUNCTION()
-		virtual void AttackEffectHandlerStart(int StencilValue);
+	virtual void AttackEffectHandlerStart(int StencilValue);
 
 	// Attack Effect Handler End
 	UFUNCTION()
-		virtual void AttackEffectHandlerEnd(int StencilValue);
+	virtual void AttackEffectHandlerEnd(int StencilValue);
+	UFUNCTION(BlueprintCallable)
+	virtual void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent *Hitbox);
+
+	// Function for sending stencil info to all clients
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+	void BroadcastStencilEffect(int StencilValue);
 
 	/* ********************** Timer Functions ********************** */
 	void onTimerEnd();
 
-protected:
+  protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -757,12 +771,10 @@ protected:
 	FTimerHandle ResilienceRegenTimerHandle;
 	FTimerHandle ResilienceDrainTimerHandle;
 	FTimerHandle FlinchDelayTimerHandle;
-	FTimerHandle AttackDelayTimerHandle;
 	FTimerHandle DeathDelayTimerHandle;
 	FTimerHandle SideStepDelayTimerHandle;
 	FTimerHandle RollDelayTimerHandle;
 	FTimerHandle delayTimerHandle;
-	
-private:
-	
+
+  private:
 };

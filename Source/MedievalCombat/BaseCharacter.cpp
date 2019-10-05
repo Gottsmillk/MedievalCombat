@@ -231,6 +231,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, SpeedEffectsArray);
 
 	// Attack Handler Variables
+	DOREPLIFETIME(ABaseCharacter, QueuedAttack);
 	DOREPLIFETIME(ABaseCharacter, ComboAmount);
 	DOREPLIFETIME(ABaseCharacter, CanAttack);
 	DOREPLIFETIME(ABaseCharacter, CurrentAttackHit);
@@ -243,6 +244,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	DOREPLIFETIME(ABaseCharacter, ComboExtenderArray);
 	DOREPLIFETIME(ABaseCharacter, UtilityArray);
 	DOREPLIFETIME(ABaseCharacter, ComboFinisherArray);
+	DOREPLIFETIME(ABaseCharacter, CurrentCastCooldownAmt);
+	DOREPLIFETIME(ABaseCharacter, CurrentUseHitbox);
+	DOREPLIFETIME(ABaseCharacter, CurrentHitbox);
 	DOREPLIFETIME(ABaseCharacter, DetectMode);
 
 	// Attack GFX Variables
@@ -271,11 +275,12 @@ void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 	DamageDeltaTime = DeltaTime;
 	MovementHandler(); // Changes movement based on if player is rolling or not
-	HitboxHandler(); // Activates hitbox when attacking
+	//HitboxHandler(); // Activates hitbox when attacking
 	BlockHandler(); // Handles whether player is blocking
 	BlockAnimation(); // Changes animation based on if player is blocking
 	DamageIndicatorTick(); // Handles displaying the damage indicator
-	ResilienceReplenishEvent(); // Handles replenishing Resilience after combos end
+	ResilienceReplenishEvent(); // Handles replenishing Resilience after combos 
+	QueueAttackHandler(); // Handles Attack queueing
 }
 
 // Make weapon visible
@@ -497,6 +502,7 @@ void ABaseCharacter::FlinchEvent() {
 	if (Health > 0 && SuperArmor == false && HBasicAttackSuperArmor == false) {
 		StopAnimations();
 		Flinched = true;
+		QueuedAttack = "";
 		FName FlinchAnimPath = TEXT("/Game/Classes/Revenant/Animations/Recoil/Flinch_Montage.Flinch_Montage");
 		UAnimMontage *FlinchAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *FlinchAnimPath.ToString()));
 		PlayActionAnim(FlinchAnimMontage, 1.1f);
@@ -521,7 +527,7 @@ void ABaseCharacter::WeaponHitEvent(FHitResult HitResult) {
 	if (HitResult.GetActor() != this) {
 		HurtboxActive = false;
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(HitResult.GetActor());
-		InflictDamage(AttackedTarget, CurrentDamage, true, true, false);
+		InflictDamage(AttackedTarget, 0, true, true, false);
 	}
 }
 
@@ -550,6 +556,9 @@ bool ABaseCharacter::InflictDamage(ABaseCharacter* Target, float Damage, bool Bl
 			if (DoT == false) {
 				AttackEffect(Target, CurrentAttackName);
 			}
+			// Remove old timer
+			GetWorld()->GetTimerManager().ClearTimer(AttackDelayTimerHandle);
+			AttackHandler3(CurrentAttackName, CurrentAttackType, CurrentCastCooldownAmt, CurrentUseHitbox, CurrentHitbox);
 			return true;
 		}
 		else { // Correctly blocked
@@ -651,7 +660,8 @@ float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 	for (int i = 0; i < AttackModifierArray.Num(); i++) {
 		if (AttackModifierArray[i].Cooldown > CurrentGameTime) {
 			if (AttackModifierArray[i].NumHits > 0) {
-				TotalAttackMods += (AttackModifierArray[i].Modifier);
+				TotalAttackMods = UKismetMathLibrary::Add_FloatFloat(TotalAttackMods, AttackModifierArray[i].Modifier);
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("AttackModCount: %d"), i));
 				AttackModifierArray[i].NumHits--;
 			}
 			else {
@@ -667,7 +677,8 @@ float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 	for (int i = 0; i < Target->DefenseModifierArray.Num(); i++) {
 		if (Target->DefenseModifierArray[i].Cooldown > CurrentGameTime) {
 			if (Target->DefenseModifierArray[i].NumHits > 0) {
-				TotalDefenseMods += (Target->DefenseModifierArray[i].Modifier);
+				TotalDefenseMods = UKismetMathLibrary::Add_FloatFloat(TotalDefenseMods, Target->DefenseModifierArray[i].Modifier);
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("DefenseModCount: %d"), i));
 				Target->DefenseModifierArray[i].NumHits--;
 			}
 			else {
@@ -680,7 +691,8 @@ float ABaseCharacter::CalcFinalDamage(float Damage, ABaseCharacter* Target) {
 			i--;
 		}
 	}
-	return Damage * (TotalAttackMods / TotalDefenseMods);
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("TotalCount: %f"), (TotalAttackMods / TotalDefenseMods)));
+	return UKismetMathLibrary::Multiply_FloatFloat(Damage, (TotalAttackMods / TotalDefenseMods));
 }
 
 // Events fired when a character dies
@@ -801,6 +813,7 @@ void ABaseCharacter::ResilienceReplenishEvent() {
 // Events executing upon block event
 void ABaseCharacter::BlockPressedEvent() {
 	if (MenuUp == false) {
+		QueuedAttack = "";
 		BlockPressed = true;
 		if (LastAttack != "Block") {
 			MakeCurrentActionLastAction("Block");
@@ -881,6 +894,7 @@ bool ABaseCharacter::GetPlayerDirections(AActor * Attacked) {
 // Roll event
 void ABaseCharacter::RollPressedEvent() {
 	if (MenuUp == false && IsRolling == false && IsSideStepping == false && Resilience >= 30 && GetCooldown("Roll") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		QueuedAttack = "";
 		ResilienceDefenseReplenish = 0.0f;
 		Resilience -= 30;
 		IsRolling = true;
@@ -911,6 +925,7 @@ void ABaseCharacter::RollPressedEvent3() {
 // SideStep event
 void ABaseCharacter::SideStepPressedEvent() {
 	if (MenuUp == false && Flinched == false && (CanAttack == true || CurrentAttackName == "SBasicAttack") && IsDead == false && IsRolling == false && IsSideStepping == false && GetCooldown("SideStep") <= CurrentGameTime && this->GetMovementComponent()->IsMovingOnGround() == true) {
+		QueuedAttack = "";
 		IsSideStepping = true;
 		CanAttack = false;
 		MakeCurrentActionLastAction("SideStep");
@@ -1035,6 +1050,14 @@ void ABaseCharacter::CheckMoveDuringAttack() {
 
 /* ********************** Attack Handler Functions ********************** */
 
+// Allowing the next Queued Attack to execute
+void ABaseCharacter::QueueAttackHandler() {
+}
+
+// Allowing the next Queued Attack to execute
+void ABaseCharacter::QueueAttack(FString AttackName) {
+}
+
 // Function for applying attack effects to enemy
 void ABaseCharacter::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 }
@@ -1114,67 +1137,19 @@ void ABaseCharacter::MakeCurrentActionLastAction(FString CurrentAttack) {
 	}
 }
 
-// Attack Handler
-void ABaseCharacter::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile, int Effect) {
-	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, GetCooldownAmt(AttackName)) == true && MenuUp == false && CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
-		CanAttack = false;
-		CurrentAttackName = AttackName;
-		CurrentAttackType = AttackType;
-		CheckMoveDuringAttack();
-		PlayActionAnim(Animation, CastSpeed);
-		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
-		if (AttackName == "HBasicAttack" && ComboAmount == 0) {
-			HBasicAttackSuperArmor = true;
-		}
-		AttackEffectHandlerStart(Effect);
-		FTimerDelegate TimerDel;
-		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
-		GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, DelayBeforeHitbox, false);
-	}
-	else {
-		LastAttack = "Missed";
-		CurrentAttackHit = false;
-	}
-}
-void ABaseCharacter::AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
-	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
-		if (UseHitbox == false && Projectile == false) {
-			HurtboxActive = true;
-		}
-		else if (UseHitbox == true) {
-			Hitbox->SetGenerateOverlapEvents(true);
-		}
-		else if (Projectile == true) {
-			ProjectileHandler(AttackName);
-		}
-	}
-	CurrentDamage = Damage;
-	HBasicAttackSuperArmor = false;
-	FTimerDelegate TimerDel;
-	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, CastCooldownAmt, UseHitbox, Hitbox);
-	GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, LengthOfHitbox, false);
-}
-void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
-	MakeCurrentActionLastAction(AttackType);
-	if (UseHitbox == true) {
-		Hitbox->SetGenerateOverlapEvents(false);
-	}
-	SetCooldown("BlockPress", .2);
-	HurtboxActive = false;
-	CurrentDamage = 0.0f;
-	CurrentAttackHit = false;
-	if (Flinched == false && IsDead == false) {
-		CanAttack = true;
-	}
-	SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
-}
-
 // Attack Effect Handler Start
 void ABaseCharacter::AttackEffectHandlerStart(int StencilValue){
 }
 
 // Attack Effect Handler End
 void ABaseCharacter::AttackEffectHandlerEnd(int StencilValue){
+}
+
+void ABaseCharacter::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
+}
+
+void ABaseCharacter::BroadcastStencilEffect_Implementation(int StencilValue) {
+	GetMesh()->SetCustomDepthStencilValue(StencilValue);
 }
 
 /* ********************** Timer Functions ********************** */

@@ -171,9 +171,9 @@ void ARevenant::BeginPlay() {
 	LoadBasicAttackAnimations();
 	SetConvertedAbilities();
 	CounteringBlowHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::CounteringBlowHurtboxOverlap);
+	WeaponHurtboxBase->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::WeaponHurtboxBaseOverlap);
 	KickHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::KickHurtboxOverlap);
 	PoweredBashHurtbox->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::PoweredBashHurtboxOverlap);
-	WeaponHurtboxBase->OnComponentBeginOverlap.AddDynamic(this, &ARevenant::StabHurtboxOverlap);
 }
 
 /* ---------------------------------- FUNCTIONS ----------------------------------- */
@@ -253,8 +253,6 @@ void ARevenant::LoadBasicAttackAnimations() {
 // Gets random montage from animation array
 UAnimMontage* ARevenant::GetRandomMontage(TArray<UAnimMontage *> MontageArray) {
 	int temp = UKismetMathLibrary::RandomIntegerInRange(0, MontageArray.Num() - 1);
-	//if(GEngine)
-    //  GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("World delta for current frame equals %i"), temp));
 	return MontageArray[temp];
 }
 
@@ -332,34 +330,34 @@ void ARevenant::AddRemainingInputs() {
 	InputComponent->AddActionBinding(SideStepBind);
 
 	// Add BasicAttack
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("SBasicAttack")));
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), FString(TEXT("SBasicAttack")));
 	BasicAttackBind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(BasicAttackBind);
 
 	// Add HardAttack
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("HBasicAttack")));
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), FString(TEXT("HBasicAttack")));
 	HardAttackBind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(HardAttackBind);
 
 	// Add CounteringBlow
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), FString(TEXT("CounteringBlow")));
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), FString(TEXT("CounteringBlow")));
 	CounteringBlowBind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(CounteringBlowBind);
 
 	// END OF DEFAULTS
 
 	// Add ComboExtender1
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[0]);
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), ComboExtenderArray[0]);
 	ComboExtender1Bind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(ComboExtender1Bind);
 
 	// Add ComboExtender2
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[1]);
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), ComboExtenderArray[1]);
 	ComboExtender2Bind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(ComboExtender2Bind);
 
 	// Add ComboExtender3
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboExtenderArray[2]);
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), ComboExtenderArray[2]);
 	ComboExtender3Bind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(ComboExtender3Bind);
 
@@ -374,12 +372,12 @@ void ARevenant::AddRemainingInputs() {
 	InputComponent->AddActionBinding(Utility2Bind);
 
 	// Add ComboFinisher 1
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboFinisherArray[0]);
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), ComboFinisherArray[0]);
 	ComboFinisher1Bind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(ComboFinisher1Bind);
 
 	// Add ComboFinisher 2
-	ActionBindHandler.BindUFunction(this, FName("AttackExecute"), ComboFinisherArray[1]);
+	ActionBindHandler.BindUFunction(this, FName("QueueAttack"), ComboFinisherArray[1]);
 	ComboFinisher2Bind.ActionDelegate = ActionBindHandler;
 	InputComponent->AddActionBinding(ComboFinisher2Bind);
 
@@ -397,6 +395,7 @@ bool ARevenant::AddRemainingInputsServer_Validate() {
 	return true;
 }
 void ARevenant::AddRemainingInputsClient() {
+
 	//Construct Damage Tables for all Attacks
 	DamageTable.Add(FDamageTableStruct("SBasicAttack", 3.0f));
 	DamageTable.Add(FDamageTableStruct("HBasicAttack", 6.0f));
@@ -589,7 +588,7 @@ void ARevenant::DetectRepAll_Implementation() {
 // Unset SuperArmor for Unwaver
 void ARevenant::UnsetAntiFlinch() {
 	SuperArmor = false;
-	GetMesh()->SetCustomDepthStencilValue(1);
+	BroadcastStencilEffect(1);
 }
 
 // Unset effects
@@ -597,23 +596,82 @@ void ARevenant::RemoveImpairEffect() {
 	if (ImpairActive == true) {
 		ImpairActive = false;
 	}
-	GetMesh()->SetCustomDepthStencilValue(1);
+	BroadcastStencilEffect(1);
 }
 
 // Unset effects
 void ARevenant::RemoveEffect() {
-	GetMesh()->SetCustomDepthStencilValue(1);
+	BroadcastStencilEffect(1);
 }
 
 /* ********************** Attack Handler Functions ********************** */
 
+// Allowing the next Queued Attack to execute
+void ARevenant::QueueAttackHandler() {
+	if (this->HasAuthority()) {
+		QueueAttackHandlerServer();
+	}
+	else {
+		QueueAttackHandlerToServer();
+	}
+}
+void ARevenant::QueueAttackHandlerToServer_Implementation() {
+	QueueAttackHandlerServer();
+}
+bool ARevenant::QueueAttackHandlerToServer_Validate() {
+	return true;
+}
+
+void ARevenant::QueueAttackHandlerServer() {
+	if (QueuedAttack != "" && Flinched == false && IsSideStepping == false && IsRolling == false && MenuUp == false && CanAttack == true) {
+		AttackExecute(QueuedAttack);
+	}
+	else if (Flinched == true || IsSideStepping == true || IsRolling == true || MenuUp == true) {
+		QueuedAttack = "";
+	}
+}
+
+void ARevenant::QueueAttack(FString AttackName) {
+	if (AttackName != QueuedAttack) {
+		QueuedAttack = AttackName;
+	}
+}
+
 // Events executed for Hitbox Attacks
+void ARevenant::WeaponHurtboxBaseOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) { 
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
+	{
+		WeaponHurtboxBase->SetGenerateOverlapEvents(false);
+		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
+
+		if (CurrentAttackName == "LifeDrain") {
+			InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false);
+			Health = UKismetMathLibrary::FClamp(Health + (CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget) * 1.5), 0.0f, 100.0f);
+		}
+		else if (CurrentAttackName == "EnergyDrain") {
+			InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false);
+			Resilience = UKismetMathLibrary::FClamp(Resilience + 30.0f, 0.0f, 100.0f);
+			AttackedTarget->Resilience = UKismetMathLibrary::FClamp(AttackedTarget->Resilience - 30.0f, 0.0f, 100.0f);
+		}
+		else if (CurrentAttackName == "PoisonBlade") {
+			if (InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false) == true) {
+				AttackedTarget->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
+			}
+		}
+		else if (CurrentAttackName == "LastResort") {
+			InflictDamage(AttackedTarget, (3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.1f - (Resilience / 60.0f)))), true, true, false);
+		}
+		else {
+			InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false);
+		}
+	}
+}
 void ARevenant::CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) { 
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		CounteringBlowHurtbox->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
+		InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false);
 	}
 }
 void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
@@ -623,11 +681,11 @@ void ARevenant::KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, cl
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
 
 		if (CurrentAttackName == "StaggeringKick") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), false, true, false);
+			InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), false, true, false);
 		}
 		else if (CurrentAttackName == "DebilitatingKick") {
 			LastAttack = "ComboExtender";
-			if (InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false) == true && ComboAmount > 1) {
+			if (InflictDamage(AttackedTarget, GetDamage(CurrentAttackName), true, true, false) == true) {
 				AttackedTarget->SetCooldown("Roll", 1.5f);
 			}
 		}
@@ -638,41 +696,82 @@ void ARevenant::PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedC
 	{
 		PoweredBashHurtbox->SetGenerateOverlapEvents(false);
 		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-		InflictDamage(AttackedTarget, CalcFinalDamage(5 + (ComboAmount * 3.0f), AttackedTarget), true, true, false);
+		InflictDamage(AttackedTarget, (5 + (ComboAmount * 3.0f)), true, true, false);
 	}
 }
-void ARevenant::StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult) {
-	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
-	{
-		WeaponHurtboxBase->SetGenerateOverlapEvents(false);
-		ABaseCharacter* AttackedTarget = Cast<ABaseCharacter>(OtherActor);
-
-		if (CurrentAttackName == "LifeDrain") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
-			Health = UKismetMathLibrary::FClamp(Health + (CurrentDamage * 2), 0.0f, 100.0f);
-		}
-		else if (CurrentAttackName == "EnergyDrain") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
-			Resilience = UKismetMathLibrary::FClamp(Resilience + 30.0f, 0.0f, 100.0f);
-			AttackedTarget->Resilience = UKismetMathLibrary::FClamp(AttackedTarget->Resilience - 30.0f, 0.0f, 100.0f);
-		}
-		else if (CurrentAttackName == "PoisonBlade") {
-			InflictDamage(AttackedTarget, CalcFinalDamage(GetDamage(CurrentAttackName), AttackedTarget), true, true, false);
-			AttackedTarget->ApplyDamageOverTime("FlinchOnLast", 1.5f, 5, 2.0f, 1.0f, this);
-		}
-	}
-}
-
 // Function for applying attack effects to enemy
 void ARevenant::AttackEffect(ABaseCharacter* Target, FString AttackName) {
 	if (AttackName == "EmpoweringStrike") {
-		AddDamageModifier(0.3f, 2.0f, 1);
+		AddDamageModifier(0.3f, 3.0f, 999);
 	}
 	else if (AttackName == "ChannelingStrike") {
 		float PushValue = 500 + (20 * ComboAmount);
 		FVector TempVector = (this->GetActorForwardVector() * PushValue) + (this->GetActorUpVector() * PushValue);
 		Target->LaunchCharacter(TempVector, true, true);
 	}
+}
+
+
+// Attack Handler
+void ARevenant::AttackHandler(FString AttackName, FString AttackType, float CastCooldownAmt, float CastSpeed, bool IsChainable, UAnimMontage* Animation, float DelayBeforeHitbox, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile, int Effect) {
+	if (IsValidAttack(IsChainable, CastCooldownAmt, AttackName, GetCooldownAmt(AttackName)) == true && MenuUp == false && CanAttack == true && IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if ((ComboAmount == 0 && AttackName == "HBasicAttack") || AttackName == "ChannelingStrike" || AttackName == "LastResort") {
+			HBasicAttackSuperArmor = true;
+		}
+		CanAttack = false;
+		CurrentAttackName = AttackName;
+		CurrentAttackType = AttackType;
+		CheckMoveDuringAttack();
+		PlayActionAnim(Animation, CastSpeed);
+		AttackCastCooldown = CurrentGameTime + DelayBeforeHitbox + LengthOfHitbox + CastCooldownAmt;
+		AttackEffectHandlerStart(Effect);
+		FTimerDelegate TimerDel;
+		TimerDel.BindUFunction(this, FName("AttackHandler2"), AttackName, AttackType, CastCooldownAmt, LengthOfHitbox, Damage, UseHitbox, Hitbox, Projectile);
+		GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, DelayBeforeHitbox, false);
+	}
+	else {
+		LastAttack = "Missed";
+		CurrentAttackHit = false;
+	}
+}
+void ARevenant::AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile) {
+	if (IsRolling == false && IsSideStepping == false && Flinched == false) {
+		if (UseHitbox == false && Projectile == false) {
+			HurtboxActive = true;
+		}
+		else if (UseHitbox == true) {
+			Hitbox->SetGenerateOverlapEvents(true);
+		}
+		else if (Projectile == true) {
+			ProjectileHandler(AttackName);
+		}
+	}
+	CurrentCastCooldownAmt = CastCooldownAmt;
+	CurrentUseHitbox = UseHitbox;
+	if (UseHitbox == true) {
+		CurrentHitbox = Hitbox;
+	}
+	HBasicAttackSuperArmor = false;
+	FTimerDelegate TimerDel;
+	TimerDel.BindUFunction(this, FName("AttackHandler3"), AttackName, AttackType, CastCooldownAmt, UseHitbox, Hitbox);
+	GetWorldTimerManager().SetTimer(AttackDelayTimerHandle, TimerDel, LengthOfHitbox, false);
+}
+void ARevenant::AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) {
+	MakeCurrentActionLastAction(AttackType);
+	if (UseHitbox == true) {
+		Hitbox->SetGenerateOverlapEvents(false);
+	}
+	SetCooldown("BlockPress", .2);
+	HurtboxActive = false;
+	CurrentAttackHit = false;
+	CurrentCastCooldownAmt = 0.0f;
+	CurrentUseHitbox = false;
+	CurrentHitbox = NULL;
+	QueuedAttack = "";
+	if (Flinched == false && IsDead == false) {
+		CanAttack = true;
+	}
+	SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 }
 
 // Master function for converting inputs into their corresponding ability events
@@ -739,7 +838,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				if (DetectMode == false) {
 					InitializeParticle(UnwaverFX, GetMesh()->K2_GetComponentLocation(), true);
 				}
-				GetMesh()->SetCustomDepthStencilValue(2);
+				BroadcastStencilEffect(2);
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				GetWorldTimerManager().SetTimer(UnwaverDelayTimerHandle, this, &ARevenant::UnsetAntiFlinch, 1.5f, false);
 			}
@@ -751,7 +850,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				}
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				ImpairActive = true;
-				GetMesh()->SetCustomDepthStencilValue(3);
+				BroadcastStencilEffect(3);
 				GetWorldTimerManager().SetTimer(ImpairDelayTimerHandle, this, &ARevenant::RemoveImpairEffect, 2.0f, false);
 			}
 		}
@@ -761,7 +860,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					InitializeParticle(FortifyFX, GetMesh()->K2_GetComponentLocation(), true);
 				}
 				AddDefenseModifier(3.0f, 1.5f, 99);
-				GetMesh()->SetCustomDepthStencilValue(4);
+				BroadcastStencilEffect(4);
 				SetCooldown(AttackName, GetFinalCooldownAmt(AttackName, GetCooldownAmt(AttackName)));
 				GetWorldTimerManager().SetTimer(FortifyDelayTimerHandle, this, &ARevenant::RemoveEffect, 1.5f, false);
 			}
@@ -787,8 +886,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.3f, // Delay before Hitbox starts
 							0.2f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							1); // Aura effect number arond player
 					}
@@ -803,8 +902,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.2f, // Delay before Hitbox starts
 							0.2f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							1); // Aura effect number arond player
 					}
@@ -824,8 +923,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.6f, // Delay before Hitbox starts
 							0.3f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							1); // Aura effect number arond player
 					}
@@ -840,8 +939,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.2f, // Delay before Hitbox starts
 							0.3f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							1); // Aura effect number arond player
 					}
@@ -866,22 +965,42 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 				}
 				// Combo Extenders
 				else if (AttackName == "StaggeringKick") {
-					FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
-					UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
-					AttackHandler(
-						AttackName, // Name
-						"HBasicAttack", // Type
-						0.6f, // Re-Casting delay
-						1.2f, // Speed of Animation
-						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-						KickAnimMontage, // Animation to use
-						0.2f, // Delay before Hitbox starts
-						0.2f, // Time duration of Hitbox
-						0.0f, // Amount of damage
-						true, // Whether or not to use hitbox instead
-						KickHurtbox, // Which hitbox to initiate
-						false, // Use Projectile?
-						1); // Aura effect number arond player
+					if (ComboAmount == 0) {
+						FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+						UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
+						AttackHandler(
+							AttackName, // Name
+							"ComboExtender", // Type
+							0.6f, // Re-Casting delay
+							0.6f, // Speed of Animation
+							CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+							KickAnimMontage, // Animation to use
+							0.35f, // Delay before Hitbox starts
+							0.4f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							KickHurtbox, // Which hitbox to initiate
+							false, // Use Projectile?
+							1); // Aura effect number arond player
+					}
+					else {
+						FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+						UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
+						AttackHandler(
+							AttackName, // Name
+							"ComboExtender", // Type
+							0.6f, // Re-Casting delay
+							1.2f, // Speed of Animation
+							CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+							KickAnimMontage, // Animation to use
+							0.2f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							KickHurtbox, // Which hitbox to initiate
+							false, // Use Projectile?
+							1); // Aura effect number arond player
+					}
 				}
 				else if (AttackName == "Impede") {
 					FName ImpedeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Impede_Montage.Impede_Montage");
@@ -907,7 +1026,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					AttackHandler(
 						AttackName, // Name
 						"ComboExtender", // Type
-						0.5f, // Re-Casting delay
+						0.7f, // Re-Casting delay
 						1.0f, // Speed of Animation
 						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
 						DrainAnimMontage, // Animation to use
@@ -920,22 +1039,42 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						1); // Aura effect number arond player
 				}
 				else if (AttackName == "DebilitatingKick") {
-					FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
-					UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
-					AttackHandler(
-						AttackName, // Name
-						"ComboExtender", // Type
-						0.6f, // Re-Casting delay
-						1.2f, // Speed of Animation
-						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
-						KickAnimMontage, // Animation to use
-						0.2f, // Delay before Hitbox starts
-						0.2f, // Time duration of Hitbox
-						0.0f, // Amount of damage
-						true, // Whether or not to use hitbox instead
-						KickHurtbox, // Which hitbox to initiate
-						false, // Use Projectile?
-						1); // Aura effect number arond player
+					if (ComboAmount == 0) {
+						FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+						UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
+						AttackHandler(
+							AttackName, // Name
+							"ComboExtender", // Type
+							0.6f, // Re-Casting delay
+							0.6f, // Speed of Animation
+							CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+							KickAnimMontage, // Animation to use
+							0.35f, // Delay before Hitbox starts
+							0.4f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							KickHurtbox, // Which hitbox to initiate
+							false, // Use Projectile?
+							1); // Aura effect number arond player
+					}
+					else {
+						FName KickAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Kick_Montage.Kick_Montage");
+						UAnimMontage *KickAnimMontage = Cast<UAnimMontage>(StaticLoadObject(UAnimMontage::StaticClass(), NULL, *KickAnimPath.ToString()));
+						AttackHandler(
+							AttackName, // Name
+							"ComboExtender", // Type
+							0.6f, // Re-Casting delay
+							1.2f, // Speed of Animation
+							CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
+							KickAnimMontage, // Animation to use
+							0.2f, // Delay before Hitbox starts
+							0.2f, // Time duration of Hitbox
+							0.0f, // Amount of damage
+							true, // Whether or not to use hitbox instead
+							KickHurtbox, // Which hitbox to initiate
+							false, // Use Projectile?
+							1); // Aura effect number arond player
+					}
 				}
 				else if (AttackName == "EmpoweringStrike") {
 					FName EmpoweringStrikeAnimPath = TEXT("/Game/Classes/Revenant/Animations/Attacks/Empowering_Strike_Montage.Empowering_Strike_Montage");
@@ -950,8 +1089,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 						0.15f, // Delay before Hitbox starts
 						0.2f, // Time duration of Hitbox
 						GetDamage(AttackName), // Amount of damage
-						false, // Whether or not to use hitbox instead
-						NULL, // Which hitbox to initiate
+						true, // Whether or not to use hitbox instead
+						WeaponHurtboxBase, // Which hitbox to initiate
 						false, // Use Projectile?
 						1); // Aura effect number arond player
 				}
@@ -961,7 +1100,7 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 					AttackHandler(
 						AttackName, // Name
 						"ComboExtender", // Type
-						0.5f, // Re-Casting delay
+						0.7f, // Re-Casting delay
 						1.0f, // Speed of Animation
 						CheckChainable("ComboExtender"), // Based on previous Attack, is it Chainable
 						DrainAnimMontage, // Animation to use
@@ -1029,8 +1168,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.3f, // Delay before Hitbox starts
 							0.4f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							6); // Aura effect number arond player
 					}
@@ -1045,8 +1184,8 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							0.18f, // Delay before Hitbox starts
 							0.25f, // Time duration of Hitbox
 							GetDamage(AttackName), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							6); // Aura effect number arond player
 					}
@@ -1106,9 +1245,9 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							LastResortAnimMontage, // Animation to use
 							0.5f, // Delay before Hitbox starts
 							0.3f, // Time duration of Hitbox
-							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							3 + (3.2f * (3.0f - (Resilience / 50.0f))), // Amount of damage
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							7); // Aura effect number arond player
 					}
@@ -1122,9 +1261,9 @@ void ARevenant::AttackExecuteServer(FString AttackName) {
 							LastResortComboAnimMontage, // Animation to use
 							0.25f, // Delay before Hitbox starts
 							0.2f, // Time duration of Hitbox
-							3 + UKismetMathLibrary::MultiplyMultiply_FloatFloat(3.2f, (3.0f - (Resilience / 50.0f))), // Amount of damage
-							false, // Whether or not to use hitbox instead
-							NULL, // Which hitbox to initiate
+							3 + (3.2f * (3.0f - (Resilience / 50.0f))), // Amount of damage
+							true, // Whether or not to use hitbox instead
+							WeaponHurtboxBase, // Which hitbox to initiate
 							false, // Use Projectile?
 							7); // Aura effect number arond player
 					}
@@ -1150,7 +1289,7 @@ void ARevenant::AttackEffectHandlerStart(int StencilValue){
 		//Shield->SetMaterial(0, ShadowMaterialShieldInstComboFinisher);
 		//GetMesh()->SetMaterial(0, ShadowMaterialBodyInstComboFinisher);
 	}
-	GetMesh()->SetCustomDepthStencilValue(StencilValue);
+	BroadcastStencilEffect(StencilValue);
 }
 
 // Attack Effect Handler End
@@ -1158,5 +1297,5 @@ void ARevenant::AttackEffectHandlerEnd(int StencilValue){
 	//Weapon->SetMaterial(0, WeaponMeshMaterialInst);
 	//Shield->SetMaterial(0, ShieldMeshMaterialInst);
 	//GetMesh()->SetMaterial(0, BodyMeshMaterialInst);
-	GetMesh()->SetCustomDepthStencilValue(1);
+	BroadcastStencilEffect(StencilValue);
 }

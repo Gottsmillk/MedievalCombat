@@ -196,15 +196,27 @@ public:
 
 	/* ********************** Attack Handler Functions ********************** */
 
+	// Allowing the next Queued Attack to execute
+		virtual void QueueAttackHandler() override;
+		
+	UFUNCTION(Server, Reliable, WithValidation)
+		void QueueAttackHandlerToServer();
+	UFUNCTION()
+		void QueueAttackHandlerServer();
+
+
+	// Allowing the next Queued Attack to execute
+		virtual void QueueAttack(FString AttackName) override;
+
 	// Events executed for Hitbox Attacks
+	UFUNCTION()
+		void WeaponHurtboxBaseOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void CounteringBlowHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void KickHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	UFUNCTION()
 		void PoweredBashHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
-	UFUNCTION()
-		void StabHurtboxOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	// Function for applying attack effects to enemy
 		virtual void AttackEffect(ABaseCharacter* Target, FString AttackName) override;
@@ -216,6 +228,27 @@ public:
 		void AttackExecuteClientToServer(const FString &AttackName);
 	UFUNCTION()
 		void AttackExecuteServer(FString AttackName);
+
+	// Attack Handler
+	UFUNCTION(BlueprintCallable)
+		void AttackHandler(
+			FString AttackName,
+			FString AttackType,
+			float CastCooldownAmt,
+			float CastSpeed,
+			bool IsChainable,
+			UAnimMontage* Animation,
+			float DelayBeforeHitbox,
+			float LengthOfHitbox,
+			float Damage,
+			bool UseHitbox,
+			UBoxComponent* Hitbox,
+			bool Projectile,
+			int Effect
+		);
+	UFUNCTION()
+		void AttackHandler2(FString AttackName, FString AttackType, float CastCooldownAmt, float LengthOfHitbox, float Damage, bool UseHitbox, UBoxComponent* Hitbox, bool Projectile);
+		virtual void AttackHandler3(FString AttackName, FString AttackType, float CastCooldownAmt, bool UseHitbox, UBoxComponent* Hitbox) override;
 
 	// Attack Effect Handler Start
 		virtual void AttackEffectHandlerStart(int StencilValue) override;
